@@ -1,0 +1,26 @@
+[package]
+name = "claw-machine"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# bevy = {git = "https://github.com/bevyengine/bevy", rev = "6228e8a4bbdb966659f7dae1e87cf55e8318bde3" }
+# bevy = { path = "../bevy"}
+bevy = { version = "0.6.0", features = ["dynamic"] }
+
+# Fast compile
+[toolchain]
+channel = "nightly"
+
+# Enable only a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
