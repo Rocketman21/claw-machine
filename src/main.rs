@@ -1,6 +1,8 @@
 use assets::AssetLoaderPlugins;
 use bevy::{prelude::*, DefaultPlugins};
+use bevy_rapier3d::prelude::*;
 use camera::CameraPlugin;
+use controls::ControlsPlugin;
 use movement::MovementPlugin;
 use ui::UIPlugins;
 
@@ -8,6 +10,7 @@ mod camera;
 mod assets;
 mod movement;
 mod ui;
+mod controls;
 
 fn main() {
     App::new()
@@ -17,6 +20,11 @@ fn main() {
         .add_plugins(UIPlugins)
         .add_plugin(CameraPlugin)
         .add_plugin(MovementPlugin)
+        .add_plugin(ControlsPlugin)
+
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierRenderPlugin)
+
         .add_state(GameState::Play)
         .run();
 }
