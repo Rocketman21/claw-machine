@@ -79,10 +79,12 @@ fn wasd_movement_system(
 
         if keyboard.any_just_released(MOVEMENT_KEYS.into_iter())
             && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) {
-            mass.flags = (
-                RigidBodyMassPropsFlags::TRANSLATION_LOCKED
-                | RigidBodyMassPropsFlags::ROTATION_LOCKED
-            ).into();
+            // mass.flags = (
+            //     RigidBodyMassPropsFlags::TRANSLATION_LOCKED
+            //     | RigidBodyMassPropsFlags::ROTATION_LOCKED
+            // ).into();
+
+            // will try to use static joint instead
 
             velocity.linvel = [0., 0., 0.].into();
         }

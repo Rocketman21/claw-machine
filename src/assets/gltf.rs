@@ -45,62 +45,40 @@ fn setup_system(
                     .spawn_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransform::identity()))
                     .with_children(|machine| {
                         machine.spawn_scene(gltf.named_scenes["claw_machine"].clone());
-
                     });
 
-                {
-                    let thickness = 0.01;
-                    let size = [0.9, 1.2, 0.9];
-                    let center = [-0.025, 2.5, -0.05];
+                {// Glass collision
+                    let thickness = 0.02;
+                    let [size_x, size_y, size_z] = [0.9, 1.1, 0.9];
+                    let [x, y, z] = [-0.025, 2.6, -0.05];
 
                     let matrix = [
-                        ((size[0], thickness, size[2]), (center[0], center[1] / 2., center[2])),
-                        // (size[0], thickness, size[2], center[0]),
-                        // (size[0], thickness, size[2], center[0]),
-                        // (size[0], thickness, size[2], center[0]),
-                        // (size[0], thickness, size[2], center[0]),
-                        // (size[0], thickness, size[2], center[0]),
+                        [thickness, size_y, size_z, x + size_x, y, z],
+                        [thickness, size_y, size_z, x - size_x, y, z],
+                        [size_x, thickness, size_z, x, y - size_y, z],
+                        [size_x, thickness, size_z, x, y + size_y, z],
+                        [size_x, size_y, thickness, x, y, z - size_z],
+                        [size_x, size_y, thickness, x, y, z + size_z],
                     ];
 
                     for coords in matrix.iter() {
                         commands
-                        .spawn_bundle(ColliderBundle {
-                            shape: ColliderShape::cuboid(coords.0.0, coords.0.1, coords.0.2).into(),
-                            // mass_properties: ColliderMassProps::Density(140.0).into(),
-                            ..Default::default()
-                        })
-                        .insert_bundle(RigidBodyBundle {
-                            body_type: RigidBodyType::Static.into(),
-                            position: [coords.1.0, coords.1.1, coords.1.2].into(),
-                            ..Default::default()
-                        })
-                        .insert(ColliderPositionSync::Discrete)
-                        .insert(ColliderDebugRender::with_id(2));
+                            .spawn_bundle(ColliderBundle {
+                                shape: ColliderShape::cuboid(coords[0], coords[1], coords[2]).into(),
+                                position: [coords[3], coords[4], coords[5]].into(),
+                                ..Default::default()
+                            })
+                            .insert(ColliderPositionSync::Discrete);
                     }
                 }
-                // commands
-                //     .spawn_bundle(ColliderBundle {
-                //         shape: ColliderShape::cuboid(0.9, 1.2, 0.9).into(),
-                //         // mass_properties: ColliderMassProps::Density(140.0).into(),
-                //         ..Default::default()
-                //     })
-                //     .insert_bundle(RigidBodyBundle {
-                //         body_type: RigidBodyType::Static.into(),
-                //         position: [-0.025, 2.5, -0.05].into(),
-                //         ..Default::default()
-                //     })
-                //     .insert(ColliderPositionSync::Discrete);
-                //     // .insert(ColliderDebugRender::with_id(2));
 
                 let claw_controller = commands
-                    // .spawn_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransfoDynamicrm::identity()))
                     .spawn_bundle(ColliderBundle {
                         shape: ColliderShape::cuboid(0.2, 0.1, 0.2).into(),
                         mass_properties: ColliderMassProps::Density(140.0).into(),
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
-                        body_type: RigidBodyType::Dynamic.into(),
                         position: [0.0, 3.65, 0.0].into(),
                         mass_properties: (RigidBodyMassPropsFlags::TRANSLATION_LOCKED_Y
                             | RigidBodyMassPropsFlags::ROTATION_LOCKED).into(),
@@ -116,6 +94,10 @@ fn setup_system(
                     .spawn_bundle(ColliderBundle {
                         shape: ColliderShape::ball(0.2).into(),
                         mass_properties: ColliderMassProps::Density(50.0).into(),
+                        material: ColliderMaterial { 
+                            restitution: 0.7,
+                            ..Default::default()
+                        }.into(),
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
