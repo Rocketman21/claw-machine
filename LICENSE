@@ -1,2 +1,7 @@
 claw machine is licensed under MIT (LICENSE-MIT or http://opensource.org/licenses/MIT),
-except for assets/models/claw_machine.glb (see CREDITS.md)
+except for:
+
+* assets/models/claw_machine.glb
+* assets/models/kleeblatt_nosky.glb
+
+(see CREDITS.md)

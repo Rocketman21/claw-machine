@@ -15,6 +15,7 @@ mod controls;
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
+        .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_plugins(DefaultPlugins)
         .add_plugins(AssetLoaderPlugins)
         .add_plugins(UIPlugins)

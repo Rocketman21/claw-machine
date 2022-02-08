@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{prelude::*, gltf::Gltf, utils::HashMap};
 use bevy_rapier3d::{prelude::*, na::Point3};
 
@@ -21,6 +23,7 @@ struct AssetHandleStorage(HashMap<GltfCollection, Handle<Gltf>>);
 #[derive(PartialEq, Eq, Hash)]
 enum GltfCollection {
     ClawMachine,
+    GlassRoom
 }
 
 fn load_assets_system(
@@ -28,6 +31,7 @@ fn load_assets_system(
     mut asset_storage: ResMut<AssetHandleStorage>,
 ) {
     asset_storage.0.insert(GltfCollection::ClawMachine, asset_server.load("models/claw_machine.glb"));
+    asset_storage.0.insert(GltfCollection::GlassRoom, asset_server.load("models/kleeblatt_nosky.glb"));
 }
 
 fn setup_system(
@@ -38,6 +42,24 @@ fn setup_system(
 ) {
     asset_events.iter().for_each(|event| {
         if let AssetEvent::Created { handle } = event {
+            if Some(handle) == asset_storage.0.get(&GltfCollection::GlassRoom) {
+                let gltf = assets.get(handle).unwrap();
+
+                commands
+                    .spawn_bundle((
+                        Transform {
+                            scale: [2.2, 2.2, 2.2].into(),
+                            rotation: Quat::from_rotation_y(-180.0 * PI / 180.),
+                            translation: [-2.2, 0., 5.4].into(),
+                            ..Default::default()
+                        },
+                        GlobalTransform::identity())
+                    )
+                    .with_children(|parent| {
+                        parent.spawn_scene(gltf.scenes[0].clone());
+                    });
+            }
+
             if Some(handle) == asset_storage.0.get(&GltfCollection::ClawMachine) {
                 let gltf = assets.get(handle).unwrap();
 
@@ -56,7 +78,7 @@ fn setup_system(
                         [thickness, size_y, size_z, x + size_x, y, z],
                         [thickness, size_y, size_z, x - size_x, y, z],
                         [size_x, thickness, size_z, x, y - size_y, z],
-                        [size_x, thickness, size_z, x, y + size_y, z],
+                        // [size_x, thickness, size_z, x, y + size_y, z],
                         [size_x, size_y, thickness, x, y, z - size_z],
                         [size_x, size_y, thickness, x, y, z + size_z],
                     ];
@@ -120,11 +142,25 @@ fn setup_system(
 
                 let joint = SphericalJoint::new().local_anchor2(Point3::new(0.0, 0.6, 0.0));
                 
-                commands.spawn_bundle((JointBuilderComponent::new(
+                commands.spawn().insert(JointBuilderComponent::new(
                     joint,
                     claw_controller,
                     claw_object,
-                ),));
+                ));
+
+                // let static_body = commands
+                //     .spawn_bundle(RigidBodyBundle { body_type: RigidBodyType::Static.into(), ..Default::default()})
+                //     .id();
+                // let lock_joint = FixedJoint::new();
+
+                // commands
+                //     .spawn()
+                //     .insert(JointBuilderComponent::new(
+                //         lock_joint,
+                //         static_body,
+                //         claw_controller,
+                //     ))
+                //     .insert(PositionLock);
 
                 commands.spawn_bundle(PointLightBundle {
                     transform: Transform::from_translation(Vec3::new(2.0, 5.0, 4.0)),
