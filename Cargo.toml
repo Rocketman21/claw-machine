@@ -8,8 +8,25 @@ edition = "2021"
 [dependencies]
 # bevy = {git = "https://github.com/bevyengine/bevy", rev = "6228e8a4bbdb966659f7dae1e87cf55e8318bde3" }
 # bevy = { path = "../bevy"}
-bevy = { version = "0.6.0", features = ["dynamic"] }
 bevy_rapier3d = { version = "0.12.0", features = ["render"] }
+bevy_kira_audio = { version = "0.8.0" }
+
+[dependencies.bevy]
+version = "0.6.0"
+default-features = false
+features = [
+    # default features
+    "bevy_gilrs",
+    "bevy_winit",
+    "render",
+    "png",
+    "hdr",
+    "x11",
+    "filesystem_watcher",
+
+    # additional features
+    "dynamic",
+]
 
 # Fast compile
 [toolchain]

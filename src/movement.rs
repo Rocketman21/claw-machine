@@ -19,7 +19,7 @@ struct WASDMovementSettings {
     target_index: usize,
 }
 
-const MOVEMENT_KEYS: [KeyCode; 6] = [
+pub const MOVEMENT_KEYS: [KeyCode; 6] = [
     KeyCode::W,
     KeyCode::A,
     KeyCode::S,
@@ -31,13 +31,13 @@ const MOVEMENT_KEYS: [KeyCode; 6] = [
 fn wasd_movement_system(
     time: Res<Time>,
     keyboard: Res<Input<KeyCode>>,
-    mut query: Query<(&WASDMovement, &mut RigidBodyVelocityComponent, &mut RigidBodyMassPropsComponent)>,
+    mut query: Query<(&WASDMovement, &mut RigidBodyVelocityComponent, &RigidBodyMassPropsComponent)>,
     mut settings: ResMut<WASDMovementSettings>,
 ) {
     let query_iter = query.iter_mut();
     let query_len = query_iter.size_hint();
 
-    for (index, (_, mut velocity, mut mass)) in query_iter.enumerate() {
+    for (index, (_, mut velocity, mass)) in query_iter.enumerate() {
         if index != settings.target_index { continue; }
 
         if keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) {
@@ -68,25 +68,6 @@ fn wasd_movement_system(
             }
     
             velocity.apply_impulse(&mass, [x, y, z].into());
-        }
-
-        if keyboard.any_just_pressed(MOVEMENT_KEYS.into_iter()) {
-            mass.flags = (
-                RigidBodyMassPropsFlags::TRANSLATION_LOCKED_Y
-                | RigidBodyMassPropsFlags::ROTATION_LOCKED
-            ).into();
-        }
-
-        if keyboard.any_just_released(MOVEMENT_KEYS.into_iter())
-            && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) {
-            // mass.flags = (
-            //     RigidBodyMassPropsFlags::TRANSLATION_LOCKED
-            //     | RigidBodyMassPropsFlags::ROTATION_LOCKED
-            // ).into();
-
-            // will try to use static joint instead
-
-            velocity.linvel = [0., 0., 0.].into();
         }
     }
 

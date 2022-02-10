@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{prelude::*, gltf::Gltf, utils::HashMap};
 use bevy_rapier3d::{prelude::*, na::Point3};
 
-use crate::movement::WASDMovement;
+use crate::{movement::WASDMovement, claw::ClawController};
 
 #[derive(Default)]
 pub struct GltfLoaderPlugin;
@@ -110,12 +110,13 @@ fn setup_system(
                     .insert(ColliderDebugRender::with_id(0))
                     .insert(ColliderPositionSync::Discrete)
                     .insert(WASDMovement)
+                    .insert(ClawController)
                     .id();
 
                 let claw_object = commands
                     .spawn_bundle(ColliderBundle {
                         shape: ColliderShape::ball(0.2).into(),
-                        mass_properties: ColliderMassProps::Density(50.0).into(),
+                        mass_properties: ColliderMassProps::Density(1.0).into(),
                         material: ColliderMaterial { 
                             restitution: 0.7,
                             ..Default::default()
@@ -123,7 +124,7 @@ fn setup_system(
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
-                        damping: RigidBodyDamping { linear_damping: 100.0, angular_damping: 0.0 }.into(),
+                        damping: RigidBodyDamping { linear_damping: 300.0, angular_damping: 150.0 }.into(),
                         ..Default::default()
                     })
                     .insert(ColliderDebugRender::with_id(1))
@@ -147,20 +148,6 @@ fn setup_system(
                     claw_controller,
                     claw_object,
                 ));
-
-                // let static_body = commands
-                //     .spawn_bundle(RigidBodyBundle { body_type: RigidBodyType::Static.into(), ..Default::default()})
-                //     .id();
-                // let lock_joint = FixedJoint::new();
-
-                // commands
-                //     .spawn()
-                //     .insert(JointBuilderComponent::new(
-                //         lock_joint,
-                //         static_body,
-                //         claw_controller,
-                //     ))
-                //     .insert(PositionLock);
 
                 commands.spawn_bundle(PointLightBundle {
                     transform: Transform::from_translation(Vec3::new(2.0, 5.0, 4.0)),
