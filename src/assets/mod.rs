@@ -2,8 +2,8 @@ use bevy::{prelude::*, app::PluginGroupBuilder};
 
 use self::{gltf::GltfLoaderPlugin, audio::AudioLoaderPlugin};
 
-mod gltf;
-mod audio;
+pub mod gltf;
+pub mod audio;
 
 #[derive(Default)]
 pub struct AssetLoaderPlugins;

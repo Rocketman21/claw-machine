@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+use bevy_kira_audio::Audio;
 use bevy_rapier3d::prelude::*;
+use rand::Rng;
 
-use crate::movement::MOVEMENT_KEYS;
+use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::Glass}};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -9,12 +11,16 @@ pub struct ClawPlugin;
 impl Plugin for ClawPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(claw_lock_system);
+            .init_resource::<GlassHitTime>()
+            .add_system(claw_lock_system)
+            .add_system(glass_hit_system);
     }
 }
 
 #[derive(Component)]
 pub struct ClawController;
+#[derive(Component)]
+pub struct ClawObject;
 
 #[derive(Component)]
 pub struct PositionLock;
@@ -41,7 +47,7 @@ fn claw_lock_system(
                     ..Default::default()
                 })
                 .id();
-    
+
             commands
                 .spawn()
                 .insert(JointBuilderComponent::new(
@@ -50,6 +56,53 @@ fn claw_lock_system(
                     claw_controller,
                 ))
                 .insert(PositionLock);
+        }
+    }
+}
+
+const GLASS_SOUNDS: [AudioCollection; 4] = [
+    AudioCollection::Glass1,
+    AudioCollection::Glass2,
+    AudioCollection::Glass3,
+    AudioCollection::Glass4
+];
+
+#[derive(Default)]
+struct GlassHitTime(f64);
+
+fn glass_hit_system(
+    audio: Res<Audio>,
+    audio_storage: Res<AudioHandleStorage>,
+    time: Res<Time>,
+    mut last_hit_time: ResMut<GlassHitTime>,
+    mut contact_events: EventReader<ContactEvent>,
+    claw_object_query: Query<(Entity, &RigidBodyVelocityComponent), With<ClawObject>>,
+    glass_query: Query<Entity, With<Glass>>,
+) {
+    if let Ok((claw_object, claw_velocity)) = claw_object_query.get_single() {
+        for event in contact_events.iter() {
+            if let ContactEvent::Started(h1, h2) = event {
+                let entities = [h1.entity(), h2.entity()];
+
+                if !entities.into_iter().any(|entity| entity == claw_object) { continue; }
+
+                for glass in glass_query.iter() {
+                    if entities.into_iter().any(|entity| entity == glass) {
+                        let mut rng = rand::thread_rng();
+                        let sound = &GLASS_SOUNDS[rng.gen_range(0..GLASS_SOUNDS.len())];
+                        let hit_force = claw_velocity.0.linvel.camax() / 10.0;
+
+                        if hit_force > 0.01 && time.seconds_since_startup() - last_hit_time.0 > 0.5 {
+                            if let Some(glass_sound) = audio_storage.0.get(sound) {
+                                audio.set_volume(claw_velocity.0.linvel.camax() / 40.0);
+                                audio.play(glass_sound.clone());
+
+                                last_hit_time.0 = time.seconds_since_startup();
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

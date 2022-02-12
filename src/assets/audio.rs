@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::HashMap};
-use bevy_kira_audio::{AudioSource, Audio};
+use bevy_kira_audio::AudioSource;
 
 #[derive(Default)]
 pub struct AudioLoaderPlugin;
@@ -7,27 +7,28 @@ pub struct AudioLoaderPlugin;
 impl Plugin for AudioLoaderPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<AssetHandleStorage>()
+            .init_resource::<AudioHandleStorage>()
             .add_startup_system(load_assets_system);
-            // .add_system(setup_system);
     }
 }
 
 #[derive(PartialEq, Eq, Default)]
-struct AssetHandleStorage(HashMap<AudioCollection, Handle<AudioSource>>);
+pub struct AudioHandleStorage(pub HashMap<AudioCollection, Handle<AudioSource>>);
 
 #[derive(PartialEq, Eq, Hash)]
-enum AudioCollection {
+pub enum AudioCollection {
     Glass1,
+    Glass2,
+    Glass3,
+    Glass4,
 }
 
 fn load_assets_system(
     asset_server: Res<AssetServer>,
-    mut asset_storage: ResMut<AssetHandleStorage>,
-    audio: Res<Audio>,
+    mut asset_storage: ResMut<AudioHandleStorage>,
 ) {
     asset_storage.0.insert(AudioCollection::Glass1, asset_server.load("audio/glass1.ogg"));
-    
-    audio.set_volume(0.1);
-    audio.play(asset_server.load("audio/glass1.ogg"));
+    asset_storage.0.insert(AudioCollection::Glass2, asset_server.load("audio/glass2.ogg"));
+    asset_storage.0.insert(AudioCollection::Glass3, asset_server.load("audio/glass3.ogg"));
+    asset_storage.0.insert(AudioCollection::Glass4, asset_server.load("audio/glass4.ogg"));
 }

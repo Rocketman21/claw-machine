@@ -10,6 +10,7 @@ edition = "2021"
 # bevy = { path = "../bevy"}
 bevy_rapier3d = { version = "0.12.0", features = ["render"] }
 bevy_kira_audio = { version = "0.8.0" }
+rand = "0.8.4"
 
 [dependencies.bevy]
 version = "0.6.0"

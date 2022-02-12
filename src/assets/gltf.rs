@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{prelude::*, gltf::Gltf, utils::HashMap};
 use bevy_rapier3d::{prelude::*, na::Point3};
 
-use crate::{movement::WASDMovement, claw::ClawController};
+use crate::{movement::WASDMovement, claw::{ClawController, ClawObject}};
 
 #[derive(Default)]
 pub struct GltfLoaderPlugin;
@@ -11,14 +11,14 @@ pub struct GltfLoaderPlugin;
 impl Plugin for GltfLoaderPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<AssetHandleStorage>()
+            .init_resource::<GltfHandleStorage>()
             .add_startup_system(load_assets_system)
             .add_system(setup_system);
         }
 }
 
 #[derive(PartialEq, Eq, Default)]
-struct AssetHandleStorage(HashMap<GltfCollection, Handle<Gltf>>);
+struct GltfHandleStorage(HashMap<GltfCollection, Handle<Gltf>>);
 
 #[derive(PartialEq, Eq, Hash)]
 enum GltfCollection {
@@ -26,9 +26,12 @@ enum GltfCollection {
     GlassRoom
 }
 
+#[derive(Component)]
+pub struct Glass;
+
 fn load_assets_system(
     asset_server: Res<AssetServer>,
-    mut asset_storage: ResMut<AssetHandleStorage>,
+    mut asset_storage: ResMut<GltfHandleStorage>,
 ) {
     asset_storage.0.insert(GltfCollection::ClawMachine, asset_server.load("models/claw_machine.glb"));
     asset_storage.0.insert(GltfCollection::GlassRoom, asset_server.load("models/kleeblatt_nosky.glb"));
@@ -37,7 +40,7 @@ fn load_assets_system(
 fn setup_system(
     mut asset_events: EventReader<AssetEvent<Gltf>>,
     assets: Res<Assets<Gltf>>,
-    asset_storage: Res<AssetHandleStorage>,
+    asset_storage: Res<GltfHandleStorage>,
     mut commands: Commands,
 ) {
     asset_events.iter().for_each(|event| {
@@ -90,7 +93,8 @@ fn setup_system(
                                 position: [coords[3], coords[4], coords[5]].into(),
                                 ..Default::default()
                             })
-                            .insert(ColliderPositionSync::Discrete);
+                            .insert(ColliderPositionSync::Discrete)
+                            .insert(Glass);
                     }
                 }
 
@@ -115,12 +119,13 @@ fn setup_system(
 
                 let claw_object = commands
                     .spawn_bundle(ColliderBundle {
-                        shape: ColliderShape::ball(0.2).into(),
+                        shape: ColliderShape::cuboid(0.2, 0.2, 0.2).into(),
                         mass_properties: ColliderMassProps::Density(1.0).into(),
                         material: ColliderMaterial { 
                             restitution: 0.7,
                             ..Default::default()
                         }.into(),
+                        flags: ActiveEvents::CONTACT_EVENTS.into(),
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
@@ -129,6 +134,7 @@ fn setup_system(
                     })
                     .insert(ColliderDebugRender::with_id(1))
                     .insert(ColliderPositionSync::Discrete)
+                    .insert(ClawObject)
                     // .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); })
                     .with_children(|parent| {
                         parent
