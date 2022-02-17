@@ -38,7 +38,8 @@ fn claw_lock_system(
     }
 
     if keyboard.any_just_released(MOVEMENT_KEYS.into_iter())
-        && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) {
+        && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) 
+    {
         if let Ok((claw_controller, position)) = claw_controller_query.get_single() {
             let static_body = commands
                 .spawn_bundle(RigidBodyBundle {
@@ -60,8 +61,7 @@ fn claw_lock_system(
     }
 }
 
-const GLASS_SOUNDS: [AudioCollection; 4] = [
-    AudioCollection::Glass1,
+const GLASS_SOUNDS: [AudioCollection; 3] = [
     AudioCollection::Glass2,
     AudioCollection::Glass3,
     AudioCollection::Glass4
@@ -81,8 +81,8 @@ fn glass_hit_system(
 ) {
     if let Ok((claw_object, claw_velocity)) = claw_object_query.get_single() {
         for event in contact_events.iter() {
-            if let ContactEvent::Started(h1, h2) = event {
-                let entities = [h1.entity(), h2.entity()];
+            if let ContactEvent::Started(handle1, handle2) = event {
+                let entities = [handle1.entity(), handle2.entity()];
 
                 if !entities.into_iter().any(|entity| entity == claw_object) { continue; }
 
@@ -90,11 +90,11 @@ fn glass_hit_system(
                     if entities.into_iter().any(|entity| entity == glass) {
                         let mut rng = rand::thread_rng();
                         let sound = &GLASS_SOUNDS[rng.gen_range(0..GLASS_SOUNDS.len())];
-                        let hit_force = claw_velocity.0.linvel.camax() / 10.0;
+                        let hit_force = claw_velocity.0.linvel.camax() / 20.0;
 
-                        if hit_force > 0.01 && time.seconds_since_startup() - last_hit_time.0 > 0.5 {
+                        if hit_force > 0.05 && time.seconds_since_startup() - last_hit_time.0 > 0.5 {
                             if let Some(glass_sound) = audio_storage.0.get(sound) {
-                                audio.set_volume(claw_velocity.0.linvel.camax() / 40.0);
+                                audio.set_volume(hit_force);
                                 audio.play(glass_sound.clone());
 
                                 last_hit_time.0 = time.seconds_since_startup();

@@ -125,7 +125,7 @@ fn setup_system(mut commands: Commands) {
 
     commands.spawn_bundle(PerspectiveCameraBundle {
         transform: Transform::from_translation(translation)
-            .looking_at(Vec3::ZERO, Vec3::Y),
+            .looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::Y),
         ..Default::default()
     }).insert(PanOrbitCamera {
         radius,

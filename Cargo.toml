@@ -5,13 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-# bevy = {git = "https://github.com/bevyengine/bevy", rev = "6228e8a4bbdb966659f7dae1e87cf55e8318bde3" }
-# bevy = { path = "../bevy"}
-bevy_rapier3d = { version = "0.12.0", features = ["render"] }
-bevy_kira_audio = { version = "0.8.0" }
-rand = "0.8.4"
-
 [dependencies.bevy]
 version = "0.6.0"
 default-features = false
@@ -28,6 +21,13 @@ features = [
     # additional features
     "dynamic",
 ]
+
+[dependencies]
+# bevy = {git = "https://github.com/bevyengine/bevy", rev = "6228e8a4bbdb966659f7dae1e87cf55e8318bde3" }
+# bevy = { path = "../bevy"}
+bevy_rapier3d = { version = "0.12.0", features = ["render"] }
+bevy_kira_audio = { version = "0.8.0" }
+rand = "0.8.4"
 
 # Fast compile
 [toolchain]

@@ -13,7 +13,8 @@ impl Plugin for GltfLoaderPlugin {
         app
             .init_resource::<GltfHandleStorage>()
             .add_startup_system(load_assets_system)
-            .add_system(setup_system);
+            .add_system(setup_system)
+            .add_system(toy_speed_control_system);
         }
 }
 
@@ -23,18 +24,22 @@ struct GltfHandleStorage(HashMap<GltfCollection, Handle<Gltf>>);
 #[derive(PartialEq, Eq, Hash)]
 enum GltfCollection {
     ClawMachine,
-    GlassRoom
+    Room,
+    HighLander
 }
 
 #[derive(Component)]
 pub struct Glass;
+#[derive(Component)]
+pub struct Toy;
 
 fn load_assets_system(
     asset_server: Res<AssetServer>,
     mut asset_storage: ResMut<GltfHandleStorage>,
 ) {
-    asset_storage.0.insert(GltfCollection::ClawMachine, asset_server.load("models/claw_machine.glb"));
-    asset_storage.0.insert(GltfCollection::GlassRoom, asset_server.load("models/kleeblatt_nosky.glb"));
+    asset_storage.0.insert(GltfCollection::ClawMachine, asset_server.load("models/licensed/claw_machine.glb"));
+    asset_storage.0.insert(GltfCollection::Room, asset_server.load("models/licensed/kleeblatt_nosky.glb"));
+    asset_storage.0.insert(GltfCollection::HighLander, asset_server.load("models/licensed/caucasian_highlander.glb"));
 }
 
 fn setup_system(
@@ -45,7 +50,7 @@ fn setup_system(
 ) {
     asset_events.iter().for_each(|event| {
         if let AssetEvent::Created { handle } = event {
-            if Some(handle) == asset_storage.0.get(&GltfCollection::GlassRoom) {
+            if Some(handle) == asset_storage.0.get(&GltfCollection::Room) {
                 let gltf = assets.get(handle).unwrap();
 
                 commands
@@ -75,13 +80,13 @@ fn setup_system(
                 {// Glass collision
                     let thickness = 0.02;
                     let [size_x, size_y, size_z] = [0.9, 1.1, 0.9];
-                    let [x, y, z] = [-0.025, 2.6, -0.05];
+                    let [x, y, z] = [-0.025, 2.7, -0.05];
 
                     let matrix = [
                         [thickness, size_y, size_z, x + size_x, y, z],
                         [thickness, size_y, size_z, x - size_x, y, z],
                         [size_x, thickness, size_z, x, y - size_y, z],
-                        // [size_x, thickness, size_z, x, y + size_y, z],
+                        [size_x, thickness, size_z, x, y + size_y, z],
                         [size_x, size_y, thickness, x, y, z - size_z],
                         [size_x, size_y, thickness, x, y, z + size_z],
                     ];
@@ -108,7 +113,6 @@ fn setup_system(
                         position: [0.0, 3.65, 0.0].into(),
                         mass_properties: (RigidBodyMassPropsFlags::TRANSLATION_LOCKED_Y
                             | RigidBodyMassPropsFlags::ROTATION_LOCKED).into(),
-                        // damping: RigidBodyDamping { linear_damping: 10000.0, angular_damping: 1000.0 }.into(),
                         ..Default::default()
                     })
                     .insert(ColliderDebugRender::with_id(0))
@@ -129,22 +133,17 @@ fn setup_system(
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
-                        damping: RigidBodyDamping { linear_damping: 300.0, angular_damping: 150.0 }.into(),
+                        damping: RigidBodyDamping { linear_damping: 300.0, angular_damping: 300.0 }.into(),
                         ..Default::default()
                     })
-                    .insert(ColliderDebugRender::with_id(1))
-                    .insert(ColliderPositionSync::Discrete)
-                    .insert(ClawObject)
-                    // .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); })
                     .with_children(|parent| {
                         parent
-                            .spawn_bundle((Transform {
-                                scale: [5.0, 5.0, 5.0].into(),
-                                translation: [-2.6, -15.5, -2.5].into(),
-                                ..Default::default()
-                            }, GlobalTransform::identity()))
+                            .spawn_bundle((Transform::from_xyz(-0.5, -3.2, -0.5), GlobalTransform::identity()))
                             .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); });
                     })
+                    // .insert(ColliderDebugRender::with_id(1))
+                    .insert(ColliderPositionSync::Discrete)
+                    .insert(ClawObject)
                     .id();
 
                 let joint = SphericalJoint::new().local_anchor2(Point3::new(0.0, 0.6, 0.0));
@@ -154,12 +153,56 @@ fn setup_system(
                     claw_controller,
                     claw_object,
                 ));
-
-                commands.spawn_bundle(PointLightBundle {
-                    transform: Transform::from_translation(Vec3::new(2.0, 5.0, 4.0)),
-                    ..Default::default()
-                });
             }
+
+            if Some(handle) == asset_storage.0.get(&GltfCollection::HighLander)
+                // && asset_storage.0.get(&GltfCollection::ClawMachine).is_some()
+            {
+                let gltf = assets.get(handle).unwrap();
+                let size = (0.1, 0.40, 0.25); // true collision is (0.1, 0.44, 0.25)
+                let copies = 15;
+                let radius = 0.5;
+
+                for index in 1..copies + 1 {
+                    let angle = 360.0 / index as f32 * 180.0 / PI;
+
+                    commands
+                        .spawn()
+                        .insert_bundle(RigidBodyBundle {
+                            position: (
+                                Vec3::new(radius * f32::sin(angle), 2.5, radius * f32::cos(angle)),
+                                Quat::from_rotation_z(angle)
+                            ).into(),
+                            ..Default::default()
+                        })
+                        .insert_bundle(ColliderBundle {
+                            shape: ColliderShape::round_cuboid(size.0, size.1, size.2, 0.02).into(),
+                            ..Default::default()
+                        })
+                        .with_children(|parent| {
+                            parent
+                                .spawn_bundle((Transform::from_xyz(0.0, -size.1, 0.0), GlobalTransform::identity()))
+                                .with_children(|parent| {
+                                    parent.spawn_scene(gltf.scenes[0].clone());
+                                });
+                        })
+                        .insert(ColliderPositionSync::Discrete)
+                        .insert(Toy);
+                    }
+            }
+
+            commands.spawn_bundle(PointLightBundle {
+                transform: Transform::from_translation(Vec3::new(2.0, 5.0, 4.0)),
+                ..Default::default()
+            });
         }
     });
+}
+
+fn toy_speed_control_system(mut query: Query<&mut RigidBodyVelocityComponent, With<Toy>>) {
+    for mut velocity in query.iter_mut() {
+        if velocity.linvel.camax() > 2.0 {
+            velocity.linvel = [0.0, 0.0, 0.0].into();
+        } 
+    }
 }
