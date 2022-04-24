@@ -13,12 +13,16 @@ impl Plugin for ClawPlugin {
         app
             .init_resource::<GlassHitTime>()
             .add_system(claw_lock_system)
-            .add_system(glass_hit_system);
-    }
+            .add_system(glass_hit_system)
+            .add_system(claw_lift_sync_system)
+            .add_system(claw_lift_system);
+        }
 }
 
 #[derive(Component)]
 pub struct ClawController;
+#[derive(Component)]
+pub struct ClawLift;
 #[derive(Component)]
 pub struct ClawObject;
 
@@ -38,7 +42,7 @@ fn claw_lock_system(
     }
 
     if keyboard.any_just_released(MOVEMENT_KEYS.into_iter())
-        && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) 
+        && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter())
     {
         if let Ok((claw_controller, position)) = claw_controller_query.get_single() {
             let static_body = commands
@@ -103,6 +107,33 @@ fn glass_hit_system(
                     }
                 }
             }
+        }
+    }
+}
+
+fn claw_lift_sync_system(
+    claw_object_query: Query<&Transform, With<ClawController>>,
+    mut claw_lift_query: Query<&mut RigidBodyPositionComponent, With<ClawLift>>,
+) {
+    if let Ok(claw_object_position) = claw_object_query.get_single() {
+        if let Ok(mut claw_lift_position) = claw_lift_query.get_single_mut() {
+            let mut next_position = claw_object_position.translation;
+            next_position.y = claw_lift_position.position.translation.y;
+
+            claw_lift_position.next_position = next_position.into();
+        }
+    }
+}
+
+fn claw_lift_system(
+    keyboard: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    mut claw_lift_query: Query<&mut RigidBodyPositionComponent, With<ClawLift>>
+) {
+    if keyboard.pressed(KeyCode::Return) {
+        if let Ok(mut claw_lift_position) = claw_lift_query.get_single_mut() {
+            claw_lift_position.next_position.translation.y =
+                claw_lift_position.position.translation.y - 1.0 * time.delta_seconds();
         }
     }
 }

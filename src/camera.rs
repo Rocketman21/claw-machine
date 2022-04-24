@@ -1,4 +1,4 @@
-use bevy::{prelude::*, input::mouse::{MouseMotion, MouseWheel}};
+use bevy::{prelude::*, input::mouse::{MouseMotion, MouseWheel, MouseScrollUnit}};
 
 #[derive(Default)]
 pub struct CameraPlugin;
@@ -35,30 +35,40 @@ fn pan_orbit_camera_system(
     windows: Res<Windows>,
     mut ev_motion: EventReader<MouseMotion>,
     mut ev_scroll: EventReader<MouseWheel>,
+    keyboard_input: ResMut<Input<KeyCode>>,
     input_mouse: Res<Input<MouseButton>>,
     mut query: Query<(&mut PanOrbitCamera, &mut Transform, &PerspectiveProjection)>,
 ) {
     // change input mapping for orbit and panning here
     let orbit_button = MouseButton::Right;
     let pan_button = MouseButton::Middle;
+    let pan_keyboard_button = KeyCode::LWin;
 
     let mut pan = Vec2::ZERO;
     let mut rotation_move = Vec2::ZERO;
     let mut scroll = 0.0;
+    let mut touchpad_factor = 1.0; 
     let mut orbit_button_changed = false;
 
     if input_mouse.pressed(orbit_button) {
         for ev in ev_motion.iter() {
             rotation_move += ev.delta;
         }
-    } else if input_mouse.pressed(pan_button) {
+    } else if input_mouse.pressed(pan_button) || keyboard_input.pressed(pan_keyboard_button) {
         // Pan only if we're not rotating at the moment
         for ev in ev_motion.iter() {
             pan += ev.delta;
         }
     }
+    
     for ev in ev_scroll.iter() {
-        scroll += ev.y;
+        if let MouseScrollUnit::Pixel = ev.unit {
+            touchpad_factor = 0.01;
+        }
+
+        if !keyboard_input.pressed(pan_keyboard_button) {
+            scroll += ev.y * touchpad_factor;
+        }
     }
     if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
         orbit_button_changed = true;

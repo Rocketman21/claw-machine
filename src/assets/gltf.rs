@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::{prelude::*, gltf::Gltf, utils::HashMap};
 use bevy_rapier3d::{prelude::*, na::Point3};
 
-use crate::{movement::WASDMovement, claw::{ClawController, ClawObject}};
+use crate::{movement::WASDMovement, claw::{ClawController, ClawObject, ClawLift}, constants::{COL_GROUP_CLAW, COL_GROUP_ALL}};
 
 #[derive(Default)]
 pub struct GltfLoaderPlugin;
@@ -121,6 +121,16 @@ fn setup_system(
                     .insert(ClawController)
                     .id();
 
+                let claw_lift = commands
+                    .spawn_bundle(RigidBodyBundle {
+                        body_type: RigidBodyType::KinematicPositionBased.into(),
+                        // body_type: RigidBodyType::Dynamic.into(),
+                        position: [0.0, 3.65, 0.0].into(),
+                        ..Default::default()
+                    })
+                    .insert(ClawLift)
+                    .id();
+
                 let claw_object = commands
                     .spawn_bundle(ColliderBundle {
                         shape: ColliderShape::cuboid(0.2, 0.2, 0.2).into(),
@@ -129,7 +139,11 @@ fn setup_system(
                             restitution: 0.7,
                             ..Default::default()
                         }.into(),
-                        flags: ActiveEvents::CONTACT_EVENTS.into(),
+                        flags: ColliderFlags {
+                            collision_groups: InteractionGroups::all().with_memberships(COL_GROUP_CLAW),
+                            active_events: ActiveEvents::CONTACT_EVENTS,
+                            ..Default::default()
+                        }.into(),
                         ..Default::default()
                     })
                     .insert_bundle(RigidBodyBundle {
@@ -138,19 +152,31 @@ fn setup_system(
                     })
                     .with_children(|parent| {
                         parent
-                            .spawn_bundle((Transform::from_xyz(-0.5, -3.2, -0.5), GlobalTransform::identity()))
+                            .spawn_bundle((Transform::from_xyz(-0.52, -3.2, -0.52), GlobalTransform::identity()))
                             .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); });
+
+                        // Claw stopper
+                        // parent // TODO
+                        //     .spawn_bundle(ColliderBundle {
+                        //         shape: ColliderShape::cuboid(0.2, 0.05, 0.2).into(),
+                        //         position: [0.0, -1.0, 0.0].into(),
+                        //         ..Default::default()
+                        //     })
+                        //     .insert(ColliderDebugRender::with_id(1))
+                        //     .insert(ColliderPositionSync::Discrete);
                     })
                     // .insert(ColliderDebugRender::with_id(1))
                     .insert(ColliderPositionSync::Discrete)
                     .insert(ClawObject)
                     .id();
 
-                let joint = SphericalJoint::new().local_anchor2(Point3::new(0.0, 0.6, 0.0));
+                let spherical_joint = SphericalJoint::new()
+                    .local_anchor1(Point3::new(0.0, 0.0, 0.0))
+                    .local_anchor2(Point3::new(0.0, 0.6, 0.0));
                 
                 commands.spawn().insert(JointBuilderComponent::new(
-                    joint,
-                    claw_controller,
+                    spherical_joint,
+                    claw_lift,
                     claw_object,
                 ));
             }
@@ -177,6 +203,10 @@ fn setup_system(
                         })
                         .insert_bundle(ColliderBundle {
                             shape: ColliderShape::round_cuboid(size.0, size.1, size.2, 0.02).into(),
+                            flags: ColliderFlags {
+                                collision_groups: InteractionGroups::all().with_filter(COL_GROUP_ALL - COL_GROUP_CLAW),
+                                ..Default::default()
+                            }.into(),
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -188,7 +218,7 @@ fn setup_system(
                         })
                         .insert(ColliderPositionSync::Discrete)
                         .insert(Toy);
-                    }
+                }
             }
 
             commands.spawn_bundle(PointLightBundle {

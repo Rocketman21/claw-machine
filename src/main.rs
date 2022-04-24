@@ -14,6 +14,7 @@ mod movement;
 mod ui;
 mod controls;
 mod claw;
+mod constants;
 
 fn main() {
     App::new()
