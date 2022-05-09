@@ -1,9 +1,13 @@
 use std::f32::consts::PI;
 
 use bevy::{prelude::*, gltf::Gltf, utils::HashMap};
-use bevy_rapier3d::{prelude::*, na::Point3};
+use bevy_rapier3d::prelude::*;
 
-use crate::{movement::WASDMovement, claw::{ClawController, ClawObject, ClawLift}, constants::{COL_GROUP_CLAW, COL_GROUP_ALL}};
+use crate::{
+    movement::WASDMovement,
+    claw::{ClawController, ClawObject, ClawLift},
+    constants::{COL_GROUP_CLAW, COL_GROUP_ALL}
+};
 
 #[derive(Default)]
 pub struct GltfLoaderPlugin;
@@ -53,8 +57,8 @@ fn setup_system(
             if Some(handle) == asset_storage.0.get(&GltfCollection::Room) {
                 let gltf = assets.get(handle).unwrap();
 
-                commands
-                    .spawn_bundle((
+                commands.spawn()
+                    .insert_bundle((
                         Transform {
                             scale: [2.2, 2.2, 2.2].into(),
                             rotation: Quat::from_rotation_y(-180.0 * PI / 180.),
@@ -71,8 +75,8 @@ fn setup_system(
             if Some(handle) == asset_storage.0.get(&GltfCollection::ClawMachine) {
                 let gltf = assets.get(handle).unwrap();
 
-                commands
-                    .spawn_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransform::identity()))
+                commands.spawn()
+                    .insert_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransform::identity()))
                     .with_children(|machine| {
                         machine.spawn_scene(gltf.named_scenes["claw_machine"].clone());
                     });
@@ -93,92 +97,59 @@ fn setup_system(
 
                     for coords in matrix.iter() {
                         commands
-                            .spawn_bundle(ColliderBundle {
-                                shape: ColliderShape::cuboid(coords[0], coords[1], coords[2]).into(),
-                                position: [coords[3], coords[4], coords[5]].into(),
-                                ..Default::default()
-                            })
-                            .insert(ColliderPositionSync::Discrete)
+                            .spawn()
+                            .insert(Collider::cuboid(coords[0], coords[1], coords[2]))
+                            .insert(Transform::from_xyz(coords[3], coords[4], coords[5]))
                             .insert(Glass);
                     }
                 }
 
-                let claw_controller = commands
-                    .spawn_bundle(ColliderBundle {
-                        shape: ColliderShape::cuboid(0.2, 0.1, 0.2).into(),
-                        mass_properties: ColliderMassProps::Density(140.0).into(),
-                        ..Default::default()
-                    })
-                    .insert_bundle(RigidBodyBundle {
-                        position: [0.0, 3.65, 0.0].into(),
-                        mass_properties: (RigidBodyMassPropsFlags::TRANSLATION_LOCKED_Y
-                            | RigidBodyMassPropsFlags::ROTATION_LOCKED).into(),
-                        ..Default::default()
-                    })
-                    .insert(ColliderDebugRender::with_id(0))
-                    .insert(ColliderPositionSync::Discrete)
-                    .insert(WASDMovement)
+                commands.spawn()
                     .insert(ClawController)
-                    .id();
+                    .insert(Collider::cuboid(0.2, 0.1, 0.2))
+                    .insert(ColliderMassProperties::Density(140.0))
+                    .insert(RigidBody::Dynamic)
+                    .insert(Transform::from_xyz(0.0, 3.65, 0.0))
+                    .insert(LockedAxes::TRANSLATION_LOCKED_Y | LockedAxes::ROTATION_LOCKED)
+                    .insert(ExternalImpulse::default())
+                    .insert(WASDMovement);
 
-                let claw_lift = commands
-                    .spawn_bundle(RigidBodyBundle {
-                        body_type: RigidBodyType::KinematicPositionBased.into(),
-                        // body_type: RigidBodyType::Dynamic.into(),
-                        position: [0.0, 3.65, 0.0].into(),
-                        ..Default::default()
-                    })
+                let claw_lift = commands.spawn()
                     .insert(ClawLift)
+                    .insert_bundle((Transform::from_xyz(0.0, 3.65, 0.0), GlobalTransform::identity()))
+                    
+                    // not using KinematicPositionBased as it causes a bug with ClawObject remain sleeping when lift moves
+                    .insert(RigidBody::Dynamic)
                     .id();
 
-                let claw_object = commands
-                    .spawn_bundle(ColliderBundle {
-                        shape: ColliderShape::cuboid(0.2, 0.2, 0.2).into(),
-                        mass_properties: ColliderMassProps::Density(1.0).into(),
-                        material: ColliderMaterial { 
-                            restitution: 0.7,
-                            ..Default::default()
-                        }.into(),
-                        flags: ColliderFlags {
-                            collision_groups: InteractionGroups::all().with_memberships(COL_GROUP_CLAW),
-                            active_events: ActiveEvents::CONTACT_EVENTS,
-                            ..Default::default()
-                        }.into(),
-                        ..Default::default()
-                    })
-                    .insert_bundle(RigidBodyBundle {
-                        damping: RigidBodyDamping { linear_damping: 300.0, angular_damping: 300.0 }.into(),
-                        ..Default::default()
-                    })
+                let spherical_joint = SphericalJointBuilder::new()
+                    .local_anchor2(Vec3::new(0.0, 0.6, 0.0));
+
+                let claw_object = commands.spawn()
+                    .insert(ClawObject)
+                    .insert_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransform::identity()))
+                    .insert(Collider::cuboid(0.2, 0.2, 0.2))
+                    .insert(Restitution::coefficient(0.7))
+                    .insert(CollisionGroups::new(COL_GROUP_CLAW, COL_GROUP_ALL))
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+                    .insert(RigidBody::Dynamic)
+                    .insert(Damping { linear_damping: 2.0, angular_damping: 2.0 })
+                    .insert(ImpulseJoint::new(claw_lift, spherical_joint))
+                    .insert(Velocity::default())
                     .with_children(|parent| {
                         parent
-                            .spawn_bundle((Transform::from_xyz(-0.52, -3.2, -0.52), GlobalTransform::identity()))
+                            .spawn_bundle((Transform::from_xyz(-0.53, -3.2, -0.50), GlobalTransform::identity()))
                             .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); });
-
-                        // Claw stopper
-                        // parent // TODO
-                        //     .spawn_bundle(ColliderBundle {
-                        //         shape: ColliderShape::cuboid(0.2, 0.05, 0.2).into(),
-                        //         position: [0.0, -1.0, 0.0].into(),
-                        //         ..Default::default()
-                        //     })
-                        //     .insert(ColliderDebugRender::with_id(1))
-                        //     .insert(ColliderPositionSync::Discrete);
                     })
-                    // .insert(ColliderDebugRender::with_id(1))
-                    .insert(ColliderPositionSync::Discrete)
-                    .insert(ClawObject)
                     .id();
 
-                let spherical_joint = SphericalJoint::new()
-                    .local_anchor1(Point3::new(0.0, 0.0, 0.0))
-                    .local_anchor2(Point3::new(0.0, 0.6, 0.0));
-                
-                commands.spawn().insert(JointBuilderComponent::new(
-                    spherical_joint,
-                    claw_lift,
-                    claw_object,
-                ));
+                // Claw stopper
+                commands.spawn()
+                    .insert(Collider::cuboid(0.2, 0.05, 0.2))
+                    .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW))
+                    .insert(RigidBody::Dynamic)
+                    .insert(ImpulseJoint::new(claw_object, FixedJointBuilder::new().local_anchor1([0.0, 0.1, 0.0].into())))
+                    .insert(ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)));
             }
 
             if Some(handle) == asset_storage.0.get(&GltfCollection::HighLander)
@@ -192,32 +163,25 @@ fn setup_system(
                 for index in 1..copies + 1 {
                     let angle = 360.0 / index as f32 * 180.0 / PI;
 
-                    commands
-                        .spawn()
-                        .insert_bundle(RigidBodyBundle {
-                            position: (
-                                Vec3::new(radius * f32::sin(angle), 2.5, radius * f32::cos(angle)),
-                                Quat::from_rotation_z(angle)
-                            ).into(),
+                    commands.spawn()
+                        .insert(Toy)
+                        .insert(RigidBody::Dynamic)
+                        .insert(Transform {
+                            translation: Vec3::new(radius * f32::sin(angle), 2.5, radius * f32::cos(angle)),
+                            rotation: Quat::from_rotation_z(angle),
                             ..Default::default()
                         })
-                        .insert_bundle(ColliderBundle {
-                            shape: ColliderShape::round_cuboid(size.0, size.1, size.2, 0.02).into(),
-                            flags: ColliderFlags {
-                                collision_groups: InteractionGroups::all().with_filter(COL_GROUP_ALL - COL_GROUP_CLAW),
-                                ..Default::default()
-                            }.into(),
-                            ..Default::default()
-                        })
+                        .insert(GlobalTransform::identity())
+                        .insert(Collider::round_cuboid(size.0, size.1, size.2, 0.02))
+                        .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW))
+                        .insert(Velocity::default())
                         .with_children(|parent| {
                             parent
                                 .spawn_bundle((Transform::from_xyz(0.0, -size.1, 0.0), GlobalTransform::identity()))
                                 .with_children(|parent| {
                                     parent.spawn_scene(gltf.scenes[0].clone());
                                 });
-                        })
-                        .insert(ColliderPositionSync::Discrete)
-                        .insert(Toy);
+                        });
                 }
             }
 
@@ -229,10 +193,10 @@ fn setup_system(
     });
 }
 
-fn toy_speed_control_system(mut query: Query<&mut RigidBodyVelocityComponent, With<Toy>>) {
+fn toy_speed_control_system(mut query: Query<&mut Velocity, With<Toy>>) {
     for mut velocity in query.iter_mut() {
-        if velocity.linvel.camax() > 2.0 {
+        if velocity.linvel.min_element().abs() > 2.0 {
             velocity.linvel = [0.0, 0.0, 0.0].into();
-        } 
+        }
     }
 }
