@@ -5,8 +5,8 @@ use bevy_rapier3d::prelude::*;
 
 use crate::{
     movement::WASDMovement,
-    claw::{ClawController, ClawObject, ClawLift},
-    constants::{COL_GROUP_CLAW, COL_GROUP_ALL}
+    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState},
+    constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER}
 };
 
 #[derive(Default)]
@@ -36,6 +36,8 @@ enum GltfCollection {
 pub struct Glass;
 #[derive(Component)]
 pub struct Toy;
+#[derive(Component)]
+pub struct ToySensor;
 
 fn load_assets_system(
     asset_server: Res<AssetServer>,
@@ -115,10 +117,10 @@ fn setup_system(
                     .insert(WASDMovement);
 
                 let claw_lift = commands.spawn()
-                    .insert(ClawLift)
-                    .insert_bundle((Transform::from_xyz(0.0, 3.65, 0.0), GlobalTransform::identity()))
+                    .insert(ClawLift(ClawLiftState::Off))
+                    .insert_bundle((Transform::from_xyz(0.0, ClawLift::START_HEIGHT, 0.0), GlobalTransform::identity()))
                     
-                    // not using KinematicPositionBased as it causes a bug with ClawObject remain sleeping when lift moves
+                    // not using KinematicPositionBased as it causes a bug with ClawObject remain asleep when lift moves
                     .insert(RigidBody::Dynamic)
                     .id();
 
@@ -137,16 +139,23 @@ fn setup_system(
                     .insert(ImpulseJoint::new(claw_lift, spherical_joint))
                     .insert(Velocity::default())
                     .with_children(|parent| {
-                        parent
-                            .spawn_bundle((Transform::from_xyz(-0.53, -3.2, -0.50), GlobalTransform::identity()))
+                        parent.spawn()
+                            .insert_bundle((Transform::from_xyz(-0.53, -3.2, -0.50), GlobalTransform::identity()))
                             .with_children(|claw| { claw.spawn_scene(gltf.named_scenes["claw"].clone()); });
+
+                        parent.spawn()
+                            .insert(ClawSensor)
+                            .insert(Collider::ball(0.1))
+                            .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW - COL_GROUP_CLAW_STOPPER))
+                            .insert(Sensor(true));
                     })
                     .id();
 
-                // Claw stopper
                 commands.spawn()
-                    .insert(Collider::cuboid(0.2, 0.05, 0.2))
-                    .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW))
+                    .insert(ClawStopper)
+                    .insert(Collider::cuboid(0.1, 0.05, 0.1))
+                    .insert(CollisionGroups::new(COL_GROUP_CLAW_STOPPER, COL_GROUP_ALL - COL_GROUP_CLAW))
+                    .insert(ActiveEvents::COLLISION_EVENTS)
                     .insert(RigidBody::Dynamic)
                     .insert(ImpulseJoint::new(claw_object, FixedJointBuilder::new().local_anchor1([0.0, 0.1, 0.0].into())))
                     .insert(ColliderDebugColor(Color::hsl(220.0, 1.0, 0.3)));
@@ -176,11 +185,17 @@ fn setup_system(
                         .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW))
                         .insert(Velocity::default())
                         .with_children(|parent| {
-                            parent
-                                .spawn_bundle((Transform::from_xyz(0.0, -size.1, 0.0), GlobalTransform::identity()))
+                            parent.spawn()
+                                .insert_bundle((Transform::from_xyz(0.0, -size.1, 0.0), GlobalTransform::identity()))
                                 .with_children(|parent| {
                                     parent.spawn_scene(gltf.scenes[0].clone());
                                 });
+                            
+                            parent.spawn()
+                                .insert(ToySensor)
+                                .insert(Collider::ball(0.2))
+                                .insert(ActiveEvents::COLLISION_EVENTS)
+                                .insert(Sensor(true));
                         });
                 }
             }

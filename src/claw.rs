@@ -3,7 +3,7 @@ use bevy_kira_audio::Audio;
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::Glass}};
+use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor}}, glue::Glue};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -15,19 +15,36 @@ impl Plugin for ClawPlugin {
             .add_system(claw_lock_system)
             .add_system(glass_hit_system)
             .add_system(claw_lift_sync_system)
+            .add_system(claw_lift_activation_system)
             .add_system(claw_lift_system);
         }
+}
+
+#[derive(Debug)]
+pub enum ClawLiftState {
+    Off,
+    Down,
+    Wait(f32),
+    Up
 }
 
 #[derive(Component)]
 pub struct ClawController;
 #[derive(Component)]
-pub struct ClawLift;
+pub struct ClawLift(pub ClawLiftState);
 #[derive(Component)]
 pub struct ClawObject;
-
+#[derive(Component)]
+pub struct ClawSensor;
+#[derive(Component)]
+pub struct ClawStopper;
 #[derive(Component)]
 pub struct PositionLock;
+
+impl ClawLift {
+    pub const START_HEIGHT: f32 = 3.65;
+    pub const SPEED: f32 = 1.0;
+}
 
 fn claw_lock_system(
     keyboard: Res<Input<KeyCode>>,
@@ -69,15 +86,15 @@ fn glass_hit_system(
     audio_storage: Res<AudioHandleStorage>,
     time: Res<Time>,
     mut last_hit_time: ResMut<GlassHitTime>,
-    mut contact_events: EventReader<CollisionEvent>,
+    mut collision_events: EventReader<CollisionEvent>,
     claw_object_query: Query<(Entity, &Velocity), With<ClawObject>>,
     glass_query: Query<Entity, With<Glass>>,
 ) {
     if let Ok((claw_object, claw_velocity)) = claw_object_query.get_single() {
-        for event in contact_events.iter() {
-            println!("Received collision event: {:?}", event);
-            if let CollisionEvent::Started(handle1, handle2, _) = event {
-                let entities = [handle1, handle2];
+        for event in collision_events.iter() {
+            // println!("Received collision event: {:?}", event);
+            if let CollisionEvent::Started(entity1, entity2, _) = event {
+                let entities = [entity1, entity2];
 
                 if !entities.into_iter().any(|entity| entity == &claw_object) { continue; }
 
@@ -119,15 +136,79 @@ fn claw_lift_sync_system(
     }
 }
 
-fn claw_lift_system(
+fn claw_lift_activation_system(
     keyboard: Res<Input<KeyCode>>,
-    time: Res<Time>,
-    mut claw_lift_query: Query<&mut Transform, With<ClawLift>>
+    mut claw_lift_query: Query<&mut ClawLift>,
 ) {
-    if keyboard.pressed(KeyCode::Return) {
-        if let Ok(mut claw_lift_position) = claw_lift_query.get_single_mut() {
-            claw_lift_position.translation.y =
-                claw_lift_position.translation.y - 1.0 * time.delta_seconds();
+    if keyboard.just_pressed(KeyCode::Return) {
+        if let Ok(mut claw_lift) = claw_lift_query.get_single_mut() {
+            claw_lift.0 = ClawLiftState::Down;
+        }
+    }
+}
+
+fn claw_lift_system(
+    time: Res<Time>,
+    mut claw_lift_query: Query<(&mut ClawLift, &mut Transform)>,
+    mut collision_events: EventReader<CollisionEvent>,
+    claw_stopper_query: Query<Entity, With<ClawStopper>>,
+    claw_sensor_query: Query<Entity, With<ClawSensor>>,
+    toy_sensor_query: Query<Entity, With<ToySensor>>,
+    parent_query: Query<&Parent>,
+    mut commands: Commands
+) {
+    if let Ok((mut claw_lift, mut claw_lift_position)) = claw_lift_query.get_single_mut() {
+        let height = claw_lift_position.translation.y;
+
+        match claw_lift.0 {
+            ClawLiftState::Down => {
+                claw_lift_position.translation.y -= ClawLift::SPEED * time.delta_seconds();
+
+                if let Ok(claw_stopper) = claw_stopper_query.get_single() {
+                    for event in collision_events.iter() {
+                        println!("Received collision event: {:?}", event);
+                        if let CollisionEvent::Started(entity1, entity2, _) = event {
+                            let entities = [entity1, entity2];
+
+                            if let Ok(claw_sensor) = claw_sensor_query.get_single() {
+                                for toy_sensor in toy_sensor_query.iter() {
+                                    if entities.into_iter().any(|entity| entity == &claw_sensor)
+                                        && entities.into_iter().any(|entity| entity == &toy_sensor) {
+                                        if let (Ok(body1), Ok(body2)) = (parent_query.get(*entity1), parent_query.get(*entity2)) {
+                                            commands.entity(body2.0).insert(Glue(body1.0));
+                                            println!("ТЫ ПОЙМАЛ ИГРУШОЧКУ");
+                                        }
+                                    }
+                                }
+                            }
+
+                            if entities.into_iter().any(|entity| entity == &claw_stopper) {
+                                claw_lift.0 = ClawLiftState::Wait(1.0);
+
+                                break;
+                            }
+
+                            // if (entity1)
+                        }
+                    }
+                }
+            },
+            ClawLiftState::Wait(seconds_remain) => {
+                if seconds_remain > 0.0 {
+                    claw_lift.0 = ClawLiftState::Wait(seconds_remain - time.delta_seconds());
+                } else {
+                    claw_lift.0 = ClawLiftState::Up;
+                }
+            }
+            ClawLiftState::Up => {
+                if height <= ClawLift::START_HEIGHT {
+                    claw_lift_position.translation.y += ClawLift::SPEED * time.delta_seconds();
+                } else {
+                    claw_lift_position.translation.y = ClawLift::START_HEIGHT;
+                    claw_lift.0 = ClawLiftState::Off;
+                }
+            },
+            _ => {}
         }
     }
 }

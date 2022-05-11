@@ -5,6 +5,7 @@ use bevy_rapier3d::prelude::*;
 use camera::CameraPlugin;
 use claw::ClawPlugin;
 use controls::ControlsPlugin;
+use glue::GluePlugin;
 use movement::MovementPlugin;
 use ui::UIPlugins;
 
@@ -15,6 +16,7 @@ mod ui;
 mod controls;
 mod claw;
 mod constants;
+mod glue;
 
 fn main() {
     App::new()
@@ -28,6 +30,7 @@ fn main() {
         .add_plugin(MovementPlugin)
         .add_plugin(ControlsPlugin)
         .add_plugin(ClawPlugin)
+        .add_plugin(GluePlugin)
 
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
