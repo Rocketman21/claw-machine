@@ -3,7 +3,7 @@ use bevy_kira_audio::Audio;
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor}}, glue::Glue};
+use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor, Toy}}, glue::Glue};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -20,6 +20,12 @@ impl Plugin for ClawPlugin {
         }
 }
 
+pub enum ClawControllerState {
+    Off,
+    Manual,
+    ReturnToBase
+}
+
 #[derive(Debug)]
 pub enum ClawLiftState {
     Off,
@@ -29,7 +35,7 @@ pub enum ClawLiftState {
 }
 
 #[derive(Component)]
-pub struct ClawController;
+pub struct ClawController(pub ClawControllerState);
 #[derive(Component)]
 pub struct ClawLift(pub ClawLiftState);
 #[derive(Component)]
@@ -40,6 +46,10 @@ pub struct ClawSensor;
 pub struct ClawStopper;
 #[derive(Component)]
 pub struct PositionLock;
+
+impl ClawController {
+    pub const BASE_POS: [f32; 3] = [0.54, 3.65, 0.54];
+}
 
 impl ClawLift {
     pub const START_HEIGHT: f32 = 3.65;
@@ -63,6 +73,8 @@ fn claw_lock_system(
     {
         if let Ok((claw_controller, position)) = claw_controller_query.get_single() {
             let fixed_joint = FixedJointBuilder::new();
+
+            println!("{:?}", position);
 
             commands.spawn()
                 .insert(PositionLock)
@@ -154,6 +166,7 @@ fn claw_lift_system(
     claw_stopper_query: Query<Entity, With<ClawStopper>>,
     claw_sensor_query: Query<Entity, With<ClawSensor>>,
     toy_sensor_query: Query<Entity, With<ToySensor>>,
+    glued_toy_query: Query<Entity, (With<Toy>, With<Glue>)>,
     parent_query: Query<&Parent>,
     mut commands: Commands
 ) {
@@ -174,9 +187,8 @@ fn claw_lift_system(
                                 for toy_sensor in toy_sensor_query.iter() {
                                     if entities.into_iter().any(|entity| entity == &claw_sensor)
                                         && entities.into_iter().any(|entity| entity == &toy_sensor) {
-                                        if let (Ok(body1), Ok(body2)) = (parent_query.get(*entity1), parent_query.get(*entity2)) {
-                                            commands.entity(body2.0).insert(Glue(body1.0));
-                                            println!("ТЫ ПОЙМАЛ ИГРУШОЧКУ");
+                                        if let Ok(toy) = parent_query.get(toy_sensor) {
+                                            commands.entity(toy.0).insert(Glue(claw_sensor));
                                         }
                                     }
                                 }
@@ -187,8 +199,6 @@ fn claw_lift_system(
 
                                 break;
                             }
-
-                            // if (entity1)
                         }
                     }
                 }
@@ -204,6 +214,10 @@ fn claw_lift_system(
                 if height <= ClawLift::START_HEIGHT {
                     claw_lift_position.translation.y += ClawLift::SPEED * time.delta_seconds();
                 } else {
+                    // if let Ok(toy) = glued_toy_query.get_single() {
+                    //     commands.entity(toy).remove::<Glue>();
+                    // }
+
                     claw_lift_position.translation.y = ClawLift::START_HEIGHT;
                     claw_lift.0 = ClawLiftState::Off;
                 }

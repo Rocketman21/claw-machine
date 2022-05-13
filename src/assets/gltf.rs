@@ -5,7 +5,7 @@ use bevy_rapier3d::prelude::*;
 
 use crate::{
     movement::WASDMovement,
-    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState},
+    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState, ClawControllerState},
     constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER}
 };
 
@@ -107,11 +107,11 @@ fn setup_system(
                 }
 
                 commands.spawn()
-                    .insert(ClawController)
+                    .insert(ClawController(ClawControllerState::Manual))
                     .insert(Collider::cuboid(0.2, 0.1, 0.2))
                     .insert(ColliderMassProperties::Density(140.0))
                     .insert(RigidBody::Dynamic)
-                    .insert(Transform::from_xyz(0.0, 3.65, 0.0))
+                    .insert(Transform::from_translation(ClawController::BASE_POS.into()))
                     .insert(LockedAxes::TRANSLATION_LOCKED_Y | LockedAxes::ROTATION_LOCKED)
                     .insert(ExternalImpulse::default())
                     .insert(WASDMovement);
