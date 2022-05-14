@@ -3,7 +3,7 @@ use bevy_kira_audio::Audio;
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor, Toy}}, glue::Glue, movement::WASDMovement};
+use crate::{assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor}}, glue::Glue, movement::WASDMovement};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -143,7 +143,6 @@ fn claw_lift_system(
     claw_stopper_query: Query<Entity, With<ClawStopper>>,
     claw_sensor_query: Query<Entity, With<ClawSensor>>,
     toy_sensor_query: Query<Entity, With<ToySensor>>,
-    glued_toy_query: Query<Entity, (With<Toy>, With<Glue>)>,
     mut claw_controller_query: Query<(&mut ClawController, &Transform), Without<ClawLift>>,
     parent_query: Query<&Parent>,
     mut commands: Commands
@@ -166,7 +165,7 @@ fn claw_lift_system(
                                     if entities.into_iter().any(|entity| entity == &claw_sensor)
                                         && entities.into_iter().any(|entity| entity == &toy_sensor) {
                                         if let Ok(toy) = parent_query.get(toy_sensor) {
-                                            commands.entity(toy.0).insert(Glue(claw_sensor));
+                                            commands.entity(claw_sensor).insert(Glue(toy.0));
                                         }
                                     }
                                 }
@@ -192,10 +191,6 @@ fn claw_lift_system(
                 if height <= ClawLift::START_HEIGHT {
                     claw_lift_position.translation.y += ClawLift::SPEED * time.delta_seconds();
                 } else {
-                    if let Ok(toy) = glued_toy_query.get_single() {
-                        commands.entity(toy).remove::<Glue>();
-                    }
-
                     if let Ok((mut claw_controller, transform)) = claw_controller_query.get_single_mut() {
                         claw_controller.0 = ClawControllerState::ReturnToBase(transform.translation);
                     }
@@ -212,6 +207,8 @@ fn claw_lift_system(
 fn claw_return_system(
     time: Res<Time>,
     mut claw_controller_query: Query<(&mut ClawController, &mut Transform)>,
+    claw_sensor_query: Query<Entity, With<ClawSensor>>,
+    mut commands: Commands,
 ) {
     if let Ok((mut claw_controller, mut transform)) = claw_controller_query.get_single_mut() {
         if let ClawControllerState::ReturnToBase(start_pos) = claw_controller.0 {
@@ -223,7 +220,11 @@ fn claw_return_system(
             if current_diff.abs().max_element() > step.abs().max_element() {
                 transform.translation += step;
             } else {
-                claw_controller.0 = ClawControllerState::Blocked;
+                if let Ok(claw_sensor) = claw_sensor_query.get_single() {
+                    commands.entity(claw_sensor).remove::<Glue>();
+                }
+
+                claw_controller.0 = ClawControllerState::Manual; // TODO Blocked
             }
         }
     }
@@ -234,7 +235,6 @@ fn claw_manual_control_system(
     mut commands: Commands,
 ) {
     if let Ok((entity, claw_controller)) = claw_controller_query.get_single_mut() {
-        println!("Changed");
         if let ClawControllerState::Manual = claw_controller.0 {
             commands.entity(entity).insert(WASDMovement);
         } else {
