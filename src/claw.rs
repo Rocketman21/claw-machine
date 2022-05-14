@@ -3,7 +3,7 @@ use bevy_kira_audio::Audio;
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{movement::MOVEMENT_KEYS, assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor, Toy}}, glue::Glue};
+use crate::{assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor, Toy}}, glue::Glue, movement::WASDMovement};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -12,18 +12,19 @@ impl Plugin for ClawPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<GlassHitTime>()
-            .add_system(claw_lock_system)
             .add_system(glass_hit_system)
             .add_system(claw_lift_sync_system)
             .add_system(claw_lift_activation_system)
-            .add_system(claw_lift_system);
+            .add_system(claw_lift_system)
+            .add_system(claw_return_system)
+            .add_system(claw_manual_control_system);
         }
 }
 
 pub enum ClawControllerState {
-    Off,
+    Blocked,
     Manual,
-    ReturnToBase
+    ReturnToBase(Vec3)
 }
 
 #[derive(Debug)]
@@ -49,40 +50,12 @@ pub struct PositionLock;
 
 impl ClawController {
     pub const BASE_POS: [f32; 3] = [0.54, 3.65, 0.54];
+    pub const STEP: f32 = 1.2;
 }
 
 impl ClawLift {
     pub const START_HEIGHT: f32 = 3.65;
     pub const SPEED: f32 = 1.0;
-}
-
-fn claw_lock_system(
-    keyboard: Res<Input<KeyCode>>,
-    position_lock_query: Query<Entity, With<PositionLock>>,
-    claw_controller_query: Query<(Entity, &Transform), With<ClawController>>,
-    mut commands: Commands,
-) {
-    if keyboard.any_just_pressed(MOVEMENT_KEYS.into_iter()) {
-        if let Ok(position_lock) = position_lock_query.get_single() {
-            commands.entity(position_lock).despawn();
-        }
-    }
-
-    if keyboard.any_just_released(MOVEMENT_KEYS.into_iter())
-        && !keyboard.any_pressed(MOVEMENT_KEYS.into_iter())
-    {
-        if let Ok((claw_controller, position)) = claw_controller_query.get_single() {
-            let fixed_joint = FixedJointBuilder::new();
-
-            println!("{:?}", position);
-
-            commands.spawn()
-                .insert(PositionLock)
-                .insert(RigidBody::Fixed)
-                .insert(*position)
-                .insert(ImpulseJoint::new(claw_controller, fixed_joint));
-        }
-    }
 }
 
 const GLASS_SOUNDS: [AudioCollection; 2] = [
@@ -151,9 +124,13 @@ fn claw_lift_sync_system(
 fn claw_lift_activation_system(
     keyboard: Res<Input<KeyCode>>,
     mut claw_lift_query: Query<&mut ClawLift>,
+    mut claw_controller_query: Query<&mut ClawController>,
 ) {
     if keyboard.just_pressed(KeyCode::Return) {
-        if let Ok(mut claw_lift) = claw_lift_query.get_single_mut() {
+        if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
+            claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
+        ) {
+            claw_controller.0 = ClawControllerState::Blocked;
             claw_lift.0 = ClawLiftState::Down;
         }
     }
@@ -167,6 +144,7 @@ fn claw_lift_system(
     claw_sensor_query: Query<Entity, With<ClawSensor>>,
     toy_sensor_query: Query<Entity, With<ToySensor>>,
     glued_toy_query: Query<Entity, (With<Toy>, With<Glue>)>,
+    mut claw_controller_query: Query<(&mut ClawController, &Transform), Without<ClawLift>>,
     parent_query: Query<&Parent>,
     mut commands: Commands
 ) {
@@ -214,15 +192,53 @@ fn claw_lift_system(
                 if height <= ClawLift::START_HEIGHT {
                     claw_lift_position.translation.y += ClawLift::SPEED * time.delta_seconds();
                 } else {
-                    // if let Ok(toy) = glued_toy_query.get_single() {
-                    //     commands.entity(toy).remove::<Glue>();
-                    // }
+                    if let Ok(toy) = glued_toy_query.get_single() {
+                        commands.entity(toy).remove::<Glue>();
+                    }
 
+                    if let Ok((mut claw_controller, transform)) = claw_controller_query.get_single_mut() {
+                        claw_controller.0 = ClawControllerState::ReturnToBase(transform.translation);
+                    }
+                    
                     claw_lift_position.translation.y = ClawLift::START_HEIGHT;
                     claw_lift.0 = ClawLiftState::Off;
                 }
             },
             _ => {}
+        }
+    }
+}
+
+fn claw_return_system(
+    time: Res<Time>,
+    mut claw_controller_query: Query<(&mut ClawController, &mut Transform)>,
+) {
+    if let Ok((mut claw_controller, mut transform)) = claw_controller_query.get_single_mut() {
+        if let ClawControllerState::ReturnToBase(start_pos) = claw_controller.0 {
+            let base = Vec3::from(ClawController::BASE_POS);
+            let current_diff = base - transform.translation;
+            let start_diff = base - start_pos;
+            let step = start_diff / ClawController::STEP * time.delta_seconds();
+
+            if current_diff.abs().max_element() > step.abs().max_element() {
+                transform.translation += step;
+            } else {
+                claw_controller.0 = ClawControllerState::Blocked;
+            }
+        }
+    }
+}
+
+fn claw_manual_control_system(
+    mut claw_controller_query: Query<(Entity, &ClawController), Changed<ClawController>>,
+    mut commands: Commands,
+) {
+    if let Ok((entity, claw_controller)) = claw_controller_query.get_single_mut() {
+        println!("Changed");
+        if let ClawControllerState::Manual = claw_controller.0 {
+            commands.entity(entity).insert(WASDMovement);
+        } else {
+            commands.entity(entity).remove::<WASDMovement>();
         }
     }
 }

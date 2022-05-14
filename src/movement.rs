@@ -31,23 +31,21 @@ pub const MOVEMENT_KEYS: [KeyCode; 6] = [
 fn wasd_movement_system(
     time: Res<Time>,
     keyboard: Res<Input<KeyCode>>,
-    mut query: Query<&mut ExternalImpulse, With<WASDMovement>>,
+    mut query: Query<&mut Transform, With<WASDMovement>>,
     mut settings: ResMut<WASDMovementSettings>,
 ) {
     let query_iter = query.iter_mut();
     let query_len = query_iter.size_hint();
 
-    for (index, mut ext_impulse) in query_iter.enumerate() {
+    for (index, mut transform) in query_iter.enumerate() {
         if index != settings.target_index { continue; }
 
         if keyboard.any_pressed(MOVEMENT_KEYS.into_iter()) {
-            const SPEED: f32 = 10.0;
+            const SPEED: f32 = 1.2;
             let distance = SPEED * time.delta_seconds();
 
-            let mut x = 0.0;
-            let mut y = 0.0;
-            let mut z = 0.0;
-    
+            let [mut x, mut y, mut z] = transform.translation.to_array();
+
             if keyboard.pressed(KeyCode::W) {
                 z -= distance;
             }
@@ -67,7 +65,7 @@ fn wasd_movement_system(
                 y += distance;
             }
 
-            ext_impulse.impulse = [x, y, z].into();
+            transform.translation = [x, y, z].into();
         }
     }
 

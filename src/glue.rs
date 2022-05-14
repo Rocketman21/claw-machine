@@ -7,8 +7,8 @@ pub struct GluePlugin;
 impl Plugin for GluePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(glue_system);
-            // .add_system_to_stage(CoreStage::Last, unglue_system);
+            .add_system(glue_system)
+            .add_system_to_stage(CoreStage::Last, unglue_system);
     }
 }
 
@@ -25,11 +25,11 @@ fn glue_system(
     }
 }
 
-// fn unglue_system(
-//     removed_glue: RemovedComponents<Glue>,
-//     mut commands: Commands,
-// ) {
-//     for entity in removed_glue.iter() {
-//         commands.entity(entity).remove::<ImpulseJoint>();
-//     }
-// }
+fn unglue_system(
+    removed_glue: RemovedComponents<Glue>,
+    mut commands: Commands,
+) {
+    for entity in removed_glue.iter() {
+        commands.entity(entity).remove::<ImpulseJoint>();
+    }
+}
