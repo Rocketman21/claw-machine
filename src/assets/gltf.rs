@@ -147,6 +147,7 @@ fn setup_system(
                             .insert(ClawSensor)
                             .insert(Collider::ball(0.1))
                             .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW - COL_GROUP_CLAW_STOPPER))
+                            .insert(ActiveEvents::COLLISION_EVENTS)
                             .insert(Sensor(true));
                     })
                     .id();
@@ -172,7 +173,7 @@ fn setup_system(
                 for index in 1..copies + 1 {
                     let angle = 360.0 / index as f32 * 180.0 / PI;
 
-                    commands.spawn()
+                    let toy = commands.spawn()
                         .insert(Toy)
                         .insert(RigidBody::Dynamic)
                         .insert(Transform {
@@ -194,9 +195,10 @@ fn setup_system(
                             parent.spawn()
                                 .insert(ToySensor)
                                 .insert(Collider::ball(0.2))
-                                .insert(ActiveEvents::COLLISION_EVENTS)
                                 .insert(Sensor(true));
-                        });
+
+                        }).id();
+                    println!("Toy {}: {:?}", index, toy);
                 }
             }
 

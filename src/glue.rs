@@ -24,7 +24,6 @@ fn glue_system(
         if let Ok(transform) = transform_query.get(glue.0) {
             let joint = ImpulseJoint::new(glue.0, FixedJointBuilder::new().local_basis1(transform.rotation));
             commands.entity(entity).insert(joint);
-            println!("Приклеиваю {:?}", glue.0);
         }
     }
 }
@@ -34,7 +33,6 @@ fn unglue_system(
     mut commands: Commands,
 ) {
     for entity in removed_glue.iter() {
-        println!("Deleting {:?}", entity);
         commands.entity(entity).remove::<ImpulseJoint>();
     }
 }

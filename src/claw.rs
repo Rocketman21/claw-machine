@@ -1,9 +1,9 @@
-use bevy::prelude::*;
-use bevy_kira_audio::Audio;
+use bevy::{prelude::*, ecs::event::Events};
+use bevy_kira_audio::{Audio, AudioChannel};
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{assets::{audio::{AudioHandleStorage, AudioCollection}, gltf::{Glass, ToySensor}}, glue::Glue, movement::WASDMovement};
+use crate::{assets::{audio::{AudioHandleStorage, AudioCollection, GlassAudioChannel, DropAudioChannel}, gltf::{Glass, ToySensor}}, glue::Glue, movement::WASDMovement};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -17,7 +17,8 @@ impl Plugin for ClawPlugin {
             .add_system(claw_lift_activation_system)
             .add_system(claw_lift_system)
             .add_system(claw_return_system)
-            .add_system(claw_manual_control_system);
+            .add_system(claw_manual_control_system)
+            .add_system(claw_stopper_event_manager_system);
         }
 }
 
@@ -58,16 +59,25 @@ impl ClawLift {
     pub const SPEED: f32 = 1.0;
 }
 
-const GLASS_SOUNDS: [AudioCollection; 2] = [
+const GLASS_SFX: [AudioCollection; 2] = [
     AudioCollection::Glass3,
     AudioCollection::Glass4
+];
+
+const DROP_SFX: [AudioCollection; 6] = [
+    AudioCollection::Drop1,
+    AudioCollection::Drop2,
+    AudioCollection::Drop3,
+    AudioCollection::Drop4,
+    AudioCollection::Drop5,
+    AudioCollection::Drop6,
 ];
 
 #[derive(Default)]
 struct GlassHitTime(f64);
 
 fn glass_hit_system(
-    audio: Res<Audio>,
+    audio: Res<AudioChannel<GlassAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
     time: Res<Time>,
     mut last_hit_time: ResMut<GlassHitTime>,
@@ -77,7 +87,7 @@ fn glass_hit_system(
 ) {
     if let Ok((claw_object, claw_velocity)) = claw_object_query.get_single() {
         for event in collision_events.iter() {
-            // println!("Received collision event: {:?}", event);
+            println!("Received collision event: {:?}", event);
             if let CollisionEvent::Started(entity1, entity2, _) = event {
                 let entities = [entity1, entity2];
 
@@ -85,16 +95,15 @@ fn glass_hit_system(
 
                 for glass in glass_query.iter() {
                     if entities.into_iter().any(|entity| entity == &glass) {
-                        let mut rng = rand::thread_rng();
-                        let sound = &GLASS_SOUNDS[rng.gen_range(0..GLASS_SOUNDS.len())];
+                        let sound = &GLASS_SFX[rand::thread_rng().gen_range(0..GLASS_SFX.len())];
                         let hit_force = Vec2::new(
                             claw_velocity.linvel.min_element().abs(),
                             claw_velocity.linvel.max_element().abs()
-                        ).max_element() / 20.0;
+                        ).max_element() / 15.0;
 
                         if hit_force > 0.05 && time.seconds_since_startup() - last_hit_time.0 > 0.5 {
                             if let Some(glass_sound) = audio_storage.0.get(sound) {
-                                audio.set_volume(hit_force);
+                                audio.set_volume(hit_force * 2.0);
                                 audio.play(glass_sound.clone());
 
                                 last_hit_time.0 = time.seconds_since_startup();
@@ -111,18 +120,20 @@ fn claw_lift_sync_system(
     claw_object_query: Query<&Transform, With<ClawController>>,
     mut claw_lift_query: Query<&mut Transform, (With<ClawLift>, Without<ClawController>)>,
 ) {
-    if let Ok(claw_object_position) = claw_object_query.get_single() {
-        if let Ok(mut claw_lift_position) = claw_lift_query.get_single_mut() {
-            let mut next_position = claw_object_position.translation;
-            next_position.y = claw_lift_position.translation.y;
+    if let (Ok(claw_object_position), Ok(mut claw_lift_position)) = (
+        claw_object_query.get_single(),claw_lift_query.get_single_mut()
+    ) {
+        let mut next_position = claw_object_position.translation;
+        next_position.y = claw_lift_position.translation.y;
 
-            claw_lift_position.translation = next_position.into();
-        }
+        claw_lift_position.translation = next_position.into();
     }
 }
 
 fn claw_lift_activation_system(
     keyboard: Res<Input<KeyCode>>,
+    audio: Res<AudioChannel<DropAudioChannel>>,
+    audio_storage: Res<AudioHandleStorage>,
     mut claw_lift_query: Query<&mut ClawLift>,
     mut claw_controller_query: Query<&mut ClawController>,
 ) {
@@ -130,6 +141,13 @@ fn claw_lift_activation_system(
         if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
             claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
         ) {
+            let sound = &DROP_SFX[rand::thread_rng().gen_range(0..DROP_SFX.len())];
+
+            if let Some(drop_sfx) = audio_storage.0.get(sound) {
+                audio.set_volume(1.5);
+                audio.play(drop_sfx.clone());
+            }
+
             claw_controller.0 = ClawControllerState::Blocked;
             claw_lift.0 = ClawLiftState::Down;
         }
@@ -194,7 +212,7 @@ fn claw_lift_system(
                     if let Ok((mut claw_controller, transform)) = claw_controller_query.get_single_mut() {
                         claw_controller.0 = ClawControllerState::ReturnToBase(transform.translation);
                     }
-                    
+
                     claw_lift_position.translation.y = ClawLift::START_HEIGHT;
                     claw_lift.0 = ClawLiftState::Off;
                 }
@@ -241,4 +259,10 @@ fn claw_manual_control_system(
             commands.entity(entity).remove::<WASDMovement>();
         }
     }
+}
+
+fn claw_stopper_event_manager_system(
+    mut events: ResMut<Events<CollisionEvent>>,
+) {
+    events.update();
 }

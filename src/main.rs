@@ -34,7 +34,6 @@ fn main() {
 
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(RapierDebugRenderPlugin::default())
-        // .add_plugin(RapierRenderPlugin) // TODO remove
 
         .add_state(GameState::Play)
         .run();
