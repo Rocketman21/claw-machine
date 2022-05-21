@@ -1,9 +1,15 @@
 use bevy::{prelude::*, ecs::event::Events};
-use bevy_kira_audio::{Audio, AudioChannel};
+use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use rand::Rng;
 
-use crate::{assets::{audio::{AudioHandleStorage, AudioCollection, GlassAudioChannel, DropAudioChannel}, gltf::{Glass, ToySensor}}, glue::Glue, movement::WASDMovement};
+use crate::{
+    assets::{
+        audio::{AudioHandleStorage, AudioCollection, GlassAudioChannel, DropAudioChannel},
+        gltf::{Glass, ToySensor, Toy}
+    },
+    glue::Glue, movement::WASDMovement, constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS}
+};
 
 #[derive(Default)]
 pub struct ClawPlugin;
@@ -19,7 +25,7 @@ impl Plugin for ClawPlugin {
             .add_system(claw_return_system)
             .add_system(claw_manual_control_system)
             .add_system(claw_stopper_event_manager_system);
-        }
+    }
 }
 
 pub enum ClawControllerState {
@@ -225,7 +231,7 @@ fn claw_lift_system(
 fn claw_return_system(
     time: Res<Time>,
     mut claw_controller_query: Query<(&mut ClawController, &mut Transform)>,
-    claw_sensor_query: Query<Entity, With<ClawSensor>>,
+    glue_query: Query<(Entity, &Glue), With<ClawSensor>>,
     mut commands: Commands,
 ) {
     if let Ok((mut claw_controller, mut transform)) = claw_controller_query.get_single_mut() {
@@ -238,8 +244,12 @@ fn claw_return_system(
             if current_diff.abs().max_element() > step.abs().max_element() {
                 transform.translation += step;
             } else {
-                if let Ok(claw_sensor) = claw_sensor_query.get_single() {
-                    commands.entity(claw_sensor).remove::<Glue>();
+                if let Ok((entity, glue)) = glue_query.get_single() {
+                    commands.entity(entity).remove::<Glue>();
+                    commands.entity(glue.0).insert(CollisionGroups::new(
+                        COL_GROUP_EJECTED_TOY,
+                        COL_GROUP_GLASS + COL_GROUP_TOY_EJECTION_SHELV
+                    ));
                 }
 
                 claw_controller.0 = ClawControllerState::Manual; // TODO Blocked

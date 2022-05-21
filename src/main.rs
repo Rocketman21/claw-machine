@@ -33,7 +33,7 @@ fn main() {
         .add_plugin(GluePlugin)
 
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
+        // .add_plugin(RapierDebugRenderPlugin::default())
 
         .add_state(GameState::Play)
         .run();

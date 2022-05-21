@@ -6,7 +6,7 @@ use bevy_rapier3d::prelude::*;
 use crate::{
     movement::WASDMovement,
     claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState, ClawControllerState},
-    constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER}
+    constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY, COL_GROUP_GLASS, COL_GROUP_BOTTOM_GLASS}
 };
 
 #[derive(Default)]
@@ -89,20 +89,48 @@ fn setup_system(
                     let [x, y, z] = [-0.025, 2.7, -0.05];
 
                     let matrix = [
-                        [thickness, size_y, size_z, x + size_x, y, z],
-                        [thickness, size_y, size_z, x - size_x, y, z],
+                        [thickness, size_y * 2.0, size_z, x + size_x, y, z],
+                        [thickness, size_y * 2.0, size_z, x - size_x, y, z],
                         [size_x, thickness, size_z, x, y - size_y, z],
                         [size_x, thickness, size_z, x, y + size_y, z],
                         [size_x, size_y, thickness, x, y, z - size_z],
                         [size_x, size_y, thickness, x, y, z + size_z],
                     ];
 
-                    for coords in matrix.iter() {
-                        commands
-                            .spawn()
+                    for (index, coords) in matrix.iter().enumerate() {
+                        commands.spawn()
                             .insert(Collider::cuboid(coords[0], coords[1], coords[2]))
+                            .insert(CollisionGroups::new(
+                                if index == 2 {
+                                    COL_GROUP_BOTTOM_GLASS
+                                } else {
+                                    COL_GROUP_GLASS
+                                },
+                                COL_GROUP_ALL
+                            ))
+                            .insert(Friction::new(0.0))
                             .insert(Transform::from_xyz(coords[3], coords[4], coords[5]))
                             .insert(Glass);
+                    }
+
+                    // Inclined shelv for toy to eject
+                    let shelv = matrix[2];
+
+                    for index in 0..2 {
+                        let mut transform = Transform::from_xyz(shelv[3], shelv[4], shelv[5]);
+
+                        commands.spawn()
+                            .insert(
+                                if index == 0 {
+                                    transform.translation.z += 0.2;
+                                    transform.with_rotation(Quat::from_rotation_x(65.0 * PI / 180.0))
+                                } else {
+                                    transform.translation.y -= 0.6;
+                                    transform
+                                }
+                            )
+                            .insert(Collider::cuboid(shelv[0], shelv[1], shelv[2]))
+                            .insert(CollisionGroups::new(COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY));
                     }
                 }
 
@@ -132,7 +160,7 @@ fn setup_system(
                     .insert_bundle((Transform::from_xyz(0.0, 0.0, 0.0), GlobalTransform::identity()))
                     .insert(Collider::cuboid(0.2, 0.2, 0.2))
                     .insert(Restitution::coefficient(0.7))
-                    .insert(CollisionGroups::new(COL_GROUP_CLAW, COL_GROUP_ALL))
+                    .insert(CollisionGroups::new(COL_GROUP_CLAW, COL_GROUP_GLASS))
                     .insert(ActiveEvents::COLLISION_EVENTS)
                     .insert(RigidBody::Dynamic)
                     .insert(Damping { linear_damping: 2.0, angular_damping: 2.0 })
@@ -183,7 +211,10 @@ fn setup_system(
                         })
                         .insert(GlobalTransform::identity())
                         .insert(Collider::round_cuboid(size.0, size.1, size.2, 0.02))
-                        .insert(CollisionGroups::new(COL_GROUP_ALL, COL_GROUP_ALL - COL_GROUP_CLAW))
+                        .insert(CollisionGroups::new(
+                            COL_GROUP_ALL,
+                            COL_GROUP_ALL - COL_GROUP_CLAW - COL_GROUP_TOY_EJECTION_SHELV - COL_GROUP_EJECTED_TOY
+                        ))
                         .insert(Velocity::default())
                         .with_children(|parent| {
                             parent.spawn()
@@ -212,7 +243,7 @@ fn setup_system(
 
 fn toy_speed_control_system(mut query: Query<&mut Velocity, With<Toy>>) {
     for mut velocity in query.iter_mut() {
-        if velocity.linvel.min_element().abs() > 2.0 {
+        if velocity.linvel.abs().max_element() > 2.0 {
             velocity.linvel = [0.0, 0.0, 0.0].into();
         }
     }
