@@ -1,6 +1,8 @@
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioSource, AudioApp};
 
+use super::AssetsLoading;
+
 #[derive(Default)]
 pub struct AudioLoaderPlugin;
 
@@ -38,6 +40,7 @@ pub enum AudioCollection {
 fn load_assets_system(
     asset_server: Res<AssetServer>,
     mut asset_storage: ResMut<AudioHandleStorage>,
+    mut assets_loading: ResMut<AssetsLoading>,
 ) {
     asset_storage.0.insert(AudioCollection::Glass3, asset_server.load("audio/glass3.ogg"));
     asset_storage.0.insert(AudioCollection::Glass4, asset_server.load("audio/glass4.ogg"));
@@ -48,4 +51,6 @@ fn load_assets_system(
     asset_storage.0.insert(AudioCollection::Drop4, asset_server.load("audio/drop4.ogg"));
     asset_storage.0.insert(AudioCollection::Drop5, asset_server.load("audio/drop5.ogg"));
     asset_storage.0.insert(AudioCollection::Drop6, asset_server.load("audio/drop6.ogg"));
+
+    assets_loading.add_storage(&asset_storage.0);
 }

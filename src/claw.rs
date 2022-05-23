@@ -5,10 +5,12 @@ use rand::Rng;
 
 use crate::{
     assets::{
-        audio::{AudioHandleStorage, AudioCollection, GlassAudioChannel, DropAudioChannel},
-        gltf::{Glass, ToySensor, Toy}
+        audio::{AudioHandleStorage, AudioCollection, DropAudioChannel}
     },
-    glue::Glue, movement::WASDMovement, constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS}
+    glue::Glue,
+    movement::WASDMovement,
+    constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},
+    toy::ToySensor
 };
 
 #[derive(Default)]
@@ -17,8 +19,6 @@ pub struct ClawPlugin;
 impl Plugin for ClawPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<GlassHitTime>()
-            .add_system(glass_hit_system)
             .add_system(claw_lift_sync_system)
             .add_system(claw_lift_activation_system)
             .add_system(claw_lift_system)
@@ -29,7 +29,7 @@ impl Plugin for ClawPlugin {
 }
 
 pub enum ClawControllerState {
-    Blocked,
+    Locked,
     Manual,
     ReturnToBase(Vec3)
 }
@@ -65,11 +65,6 @@ impl ClawLift {
     pub const SPEED: f32 = 1.0;
 }
 
-const GLASS_SFX: [AudioCollection; 2] = [
-    AudioCollection::Glass3,
-    AudioCollection::Glass4
-];
-
 const DROP_SFX: [AudioCollection; 6] = [
     AudioCollection::Drop1,
     AudioCollection::Drop2,
@@ -78,49 +73,6 @@ const DROP_SFX: [AudioCollection; 6] = [
     AudioCollection::Drop5,
     AudioCollection::Drop6,
 ];
-
-#[derive(Default)]
-struct GlassHitTime(f64);
-
-fn glass_hit_system(
-    audio: Res<AudioChannel<GlassAudioChannel>>,
-    audio_storage: Res<AudioHandleStorage>,
-    time: Res<Time>,
-    mut last_hit_time: ResMut<GlassHitTime>,
-    mut collision_events: EventReader<CollisionEvent>,
-    claw_object_query: Query<(Entity, &Velocity), With<ClawObject>>,
-    glass_query: Query<Entity, With<Glass>>,
-) {
-    if let Ok((claw_object, claw_velocity)) = claw_object_query.get_single() {
-        for event in collision_events.iter() {
-            println!("Received collision event: {:?}", event);
-            if let CollisionEvent::Started(entity1, entity2, _) = event {
-                let entities = [entity1, entity2];
-
-                if !entities.into_iter().any(|entity| entity == &claw_object) { continue; }
-
-                for glass in glass_query.iter() {
-                    if entities.into_iter().any(|entity| entity == &glass) {
-                        let sound = &GLASS_SFX[rand::thread_rng().gen_range(0..GLASS_SFX.len())];
-                        let hit_force = Vec2::new(
-                            claw_velocity.linvel.min_element().abs(),
-                            claw_velocity.linvel.max_element().abs()
-                        ).max_element() / 15.0;
-
-                        if hit_force > 0.05 && time.seconds_since_startup() - last_hit_time.0 > 0.5 {
-                            if let Some(glass_sound) = audio_storage.0.get(sound) {
-                                audio.set_volume(hit_force * 2.0);
-                                audio.play(glass_sound.clone());
-
-                                last_hit_time.0 = time.seconds_since_startup();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 fn claw_lift_sync_system(
     claw_object_query: Query<&Transform, With<ClawController>>,
@@ -154,7 +106,7 @@ fn claw_lift_activation_system(
                 audio.play(drop_sfx.clone());
             }
 
-            claw_controller.0 = ClawControllerState::Blocked;
+            claw_controller.0 = ClawControllerState::Locked;
             claw_lift.0 = ClawLiftState::Down;
         }
     }
@@ -252,7 +204,7 @@ fn claw_return_system(
                     ));
                 }
 
-                claw_controller.0 = ClawControllerState::Manual; // TODO Blocked
+                claw_controller.0 = ClawControllerState::Manual; // TODO Locked
             }
         }
     }
