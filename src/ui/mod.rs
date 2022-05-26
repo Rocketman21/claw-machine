@@ -1,7 +1,8 @@
 use bevy::{prelude::*, app::PluginGroupBuilder};
 
-use self::{menu::MenuPlugin, system_info::SystemInfoPlugin};
+use self::{menu::MenuPlugin, system_info::SystemInfoPlugin, controls::ControlsPlugin};
 
+mod controls;
 mod menu;
 mod system_info;
 
@@ -12,6 +13,7 @@ impl PluginGroup for UIPlugins {
     fn build(&mut self, group: &mut PluginGroupBuilder) {
         group
             .add(UIMainPlugin)
+            .add(ControlsPlugin)
             .add(MenuPlugin)
             .add(SystemInfoPlugin);
     }

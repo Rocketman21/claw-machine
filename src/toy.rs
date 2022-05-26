@@ -75,7 +75,6 @@ fn spawn_toys_system(
                         .insert(ToySensor)
                         .insert(Collider::ball(0.2))
                         .insert(Sensor(true));
-
                 });
         }
     }
