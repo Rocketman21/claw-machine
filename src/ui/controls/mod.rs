@@ -20,6 +20,12 @@ pub struct Controls {
     pub header_font: Handle<Font>,
 }
 
+impl Controls {
+    pub fn button(&self, text: &str) -> Button {
+        Button { controls: self, text: text.to_string() }
+    }
+}
+
 impl FromWorld for Controls {
     fn from_world(world: &mut World) -> Self {
         let asset_server = world.get_resource_mut::<AssetServer>().unwrap();
@@ -31,20 +37,6 @@ impl FromWorld for Controls {
     }
 }
 
-impl Controls {
-    pub fn button(&self, text: &str) -> Button {
-        Button::with_font(self.font.clone(), text)
-    }
-}
-
-pub trait InsertControls {
-    fn insert_button(&mut self, button: Button) -> &mut Self;
-}
-
-impl<'w, 's, 'a> InsertControls for EntityCommands<'w, 's, 'a> {
-    fn insert_button(&mut self, button: Button) -> &mut Self {
-        self
-            .insert_bundle(button.component)
-            .with_children(|parent| { parent.spawn_bundle(button.children); })
-    }
+pub trait SpawnControl<'w, 's, T> {
+    fn spawn_control(&mut self, control: T) -> EntityCommands<'w, 's, '_>;
 }
