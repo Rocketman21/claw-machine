@@ -1,7 +1,7 @@
 use bevy::{prelude::*, ecs::system::EntityCommands};
 use iyes_loopless::prelude::*;
 
-use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, some_button_changed};
+use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, some_button_changed, State};
 
 pub use self::button::ButtonState;
 
@@ -14,6 +14,7 @@ impl Plugin for ControlsPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<Controls>()
+            .init_resource::<State>()
             .add_system(button_animation_system.run_if(some_button_changed))
             .add_system(handle_interaction_system)
             .add_system(keyboard_button_interaction_system);

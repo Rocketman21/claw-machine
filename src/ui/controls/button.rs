@@ -28,12 +28,21 @@ impl<'a> Button<'a> {
     }
 }
 
+#[derive(Default)]
+pub struct State {
+    selected: Option<Entity>,
+    prev_selected: Option<Entity>
+}
+
 #[derive(Component)]
 pub enum ButtonState {
     None,
     Selected,
     Pressed
 }
+
+#[derive(Component)]
+pub struct SelectedByDefault(bool);
 
 impl<'w, 's> SpawnControl<'w, 's, Button<'_>> for ChildBuilder<'w, 's, '_> {
     fn spawn_control(&mut self, control: Button) -> EntityCommands<'w, 's, '_> {
@@ -57,11 +66,7 @@ impl<'w, 's> SpawnControl<'w, 's, Button<'_>> for ChildBuilder<'w, 's, '_> {
                     },
                     ..default()
                 })
-                .insert(if control.is_selected_by_default {
-                    ButtonState::Selected
-                } else {
-                    ButtonState::None
-                })
+                .insert(SelectedByDefault(control.is_selected_by_default))
                 .with_children(|parent| {
                     for index in 0..=1 {
                         parent.spawn_bundle(TextBundle {
@@ -119,44 +124,45 @@ pub fn handle_interaction_system(
 }
 
 pub fn button_animation_system(
-    mut query: Query<(Entity, &mut ButtonState, &mut UiColor)>,
+    local_state: Res<State>,
+    mut query: Query<(Entity, &mut UiColor)>,
 ) {
     let mut selected: Option<Entity> = None;
 
-    println!("Оно запустилось");
-
-    for (entity, state, mut color) in query.iter_mut() {
-        match *state {
-            ButtonState::Selected => {
-                *color = Button::COLOR_ACTIVE.into();
-                selected = Some(entity);
-            },
-            ButtonState::None => {
-                *color = Button::COLOR_NORMAL.into();
-            },
-            _ => {}
+    for (entity, mut color) in query.iter_mut() {
+        if Some(entity) == local_state.selected {
+            *color = Button::COLOR_ACTIVE.into();
+        } else {
+            *color = Button::COLOR_NORMAL.into();
         }
-    }
-
-    if let Some(just_selected_button) = selected {
-        query.iter_mut().for_each(|(entity, mut state, _)| {
-            if let ButtonState::Selected = *state {
-                if entity != just_selected_button {
-                    *state = ButtonState::None;
-                }
-            }
-        })
+        // match *state {
+        //     ButtonState::Selected => {
+        //         *color = Button::COLOR_ACTIVE.into();
+        //         selected = Some(entity);
+        //     },
+        //     ButtonState::None => {
+        //         *color = Button::COLOR_NORMAL.into();
+        //     },
+        //     _ => {}
+        // }
     }
 }
 
-pub fn some_button_changed(query: Query<Entity, Changed<ButtonState>>) -> bool {
-    println!("asda {:?}", query.iter().size_hint().1);
-    query.iter().size_hint().1.unwrap_or(0) > 0
+pub fn some_button_changed(mut local_state: ResMut<State>) -> bool {
+    let statement = local_state.selected != local_state.prev_selected;
+
+    println!("selected: {:?}, prev: {:?}", local_state.selected, local_state.prev_selected);
+    if statement {
+        local_state.prev_selected = local_state.selected;
+    }
+
+    statement
 }
 
 pub fn keyboard_button_interaction_system(
+    mut local_state: ResMut<State>,
     keyboard: Res<Input<KeyCode>>,
-    mut query: Query<(Entity, &mut ButtonState)>
+    mut query: Query<(Entity, &SelectedByDefault)>
 ) {
     if keyboard.any_just_pressed(Button::ITERACTION_KEYS) {
         let mut iter = query.iter();
@@ -164,7 +170,7 @@ pub fn keyboard_button_interaction_system(
         let last_entity = iter.last().unwrap().0;
         let mut selected_button = first_entity;
 
-        for (index, (_, state)) in query.iter().enumerate() {
+        for (index, (entity, selected_by_default)) in query.iter().enumerate() {
             if keyboard.just_pressed(KeyCode::S) || keyboard.just_pressed(KeyCode::W) {
                 let is_next = keyboard.just_pressed(KeyCode::S);
                 let (next_index, overflow_button) = if is_next {
@@ -173,11 +179,13 @@ pub fn keyboard_button_interaction_system(
                     (index - 1, last_entity)
                 };
 
-                if let ButtonState::Selected = state {
+                if Some(entity) == local_state.selected || selected_by_default.0 {
                     if let Some((next_entity, _)) = query.iter().nth(next_index) {
                         selected_button = next_entity;
+                        local_state.selected = Some(next_entity);
                     } else {
                         selected_button = overflow_button;
+                        local_state.selected = Some(overflow_button);
                     };
 
                     break;
@@ -185,6 +193,6 @@ pub fn keyboard_button_interaction_system(
             }
         }
 
-        *query.get_mut(selected_button).unwrap().1 = ButtonState::Selected;
+        println!("new state: {:?}", local_state.selected);
     }
 }
