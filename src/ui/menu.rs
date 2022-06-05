@@ -43,7 +43,7 @@ fn spawn_menu_system(
             })
                 .with_children(|parent| {
                     parent.spawn_control(controls.button("Number game"));
-                    parent.spawn_control(controls.button("Speed game"));
+                    parent.spawn_control(controls.button("Speed game").selected());
                 });
 
             menu.spawn_bundle(TextBundle {

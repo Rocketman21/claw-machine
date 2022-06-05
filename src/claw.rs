@@ -132,7 +132,7 @@ fn claw_lift_system(
 
                 if let Ok(claw_stopper) = claw_stopper_query.get_single() {
                     for event in collision_events.iter() {
-                        println!("Received collision event: {:?}", event);
+                        // println!("Received collision event: {:?}", event);
                         if let CollisionEvent::Started(entity1, entity2, _) = event {
                             let entities = [entity1, entity2];
 
