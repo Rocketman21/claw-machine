@@ -51,8 +51,14 @@ fn main() {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameMode {
+    SpeedGame,
+    NumberGame
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameState {
     Loading,
     MainMenu,
-    InGame,
+    InGame(GameMode),
 }

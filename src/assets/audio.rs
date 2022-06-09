@@ -9,6 +9,7 @@ pub struct AudioLoaderPlugin;
 pub struct BackgroundAudioChannel;
 pub struct GlassAudioChannel;
 pub struct DropAudioChannel;
+pub struct UiAudioChannel;
 
 impl Plugin for AudioLoaderPlugin {
     fn build(&self, app: &mut App) {
@@ -17,6 +18,7 @@ impl Plugin for AudioLoaderPlugin {
             .add_audio_channel::<BackgroundAudioChannel>()
             .add_audio_channel::<GlassAudioChannel>()
             .add_audio_channel::<DropAudioChannel>()
+            .add_audio_channel::<UiAudioChannel>()
             .add_startup_system(load_assets_system);
     }
 }
@@ -35,6 +37,8 @@ pub enum AudioCollection {
     Drop4,
     Drop5,
     Drop6,
+
+    ButtonPress
 }
 
 fn load_assets_system(
@@ -51,6 +55,8 @@ fn load_assets_system(
     asset_storage.0.insert(AudioCollection::Drop4, asset_server.load("audio/drop4.ogg"));
     asset_storage.0.insert(AudioCollection::Drop5, asset_server.load("audio/drop5.ogg"));
     asset_storage.0.insert(AudioCollection::Drop6, asset_server.load("audio/drop6.ogg"));
+
+    asset_storage.0.insert(AudioCollection::ButtonPress, asset_server.load("audio/button.ogg"));
 
     assets_loading.add_storage(&asset_storage.0);
 }

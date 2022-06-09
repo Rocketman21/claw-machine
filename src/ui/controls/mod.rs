@@ -1,9 +1,9 @@
 use bevy::{prelude::*, ecs::system::EntityCommands};
 use iyes_loopless::prelude::*;
 
-use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, some_button_changed, State};
+use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system};
 
-pub use self::button::ButtonState;
+pub use self::button::ButtonPressEvent;
 
 mod button;
 
@@ -14,10 +14,12 @@ impl Plugin for ControlsPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<Controls>()
-            .init_resource::<State>()
-            .add_system(button_animation_system.run_if(some_button_changed))
+            .init_resource::<ButtonState>()
+            .add_event::<ButtonPressEvent>()
+            .add_system(button_animation_system.run_if(selected_button_changed))
             .add_system(handle_interaction_system)
-            .add_system(keyboard_button_interaction_system);
+            .add_system(keyboard_button_interaction_system)
+            .add_system(button_sfx_system);
             // .add_system_set(
             //     ConditionSet::new()
             //         .run_if(buttons_spawned)
@@ -33,7 +35,7 @@ pub struct Controls {
 
 impl Controls {
     pub fn button(&self, text: &str) -> Button {
-        Button { controls: self, text: text.to_string(), is_selected_by_default: false }
+        Button { controls: self, id: None, text: text.to_string(), is_selected_by_default: false }
     }
 }
 
@@ -48,6 +50,6 @@ impl FromWorld for Controls {
     }
 }
 
-pub trait SpawnControl<'w, 's, T> {
-    fn spawn_control(&mut self, control: T) -> EntityCommands<'w, 's, '_>;
+pub trait SpawnControl<'w, 's, 'a, T> {
+    fn spawn_control(&mut self, control: T) -> T;
 }

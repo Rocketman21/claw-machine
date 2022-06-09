@@ -1,6 +1,7 @@
 use bevy::{prelude::*, ecs::event::Events};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
+use iyes_loopless::prelude::*;
 use rand::Rng;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     glue::Glue,
     movement::WASDMovement,
     constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},
-    toy::ToySensor
+    toy::ToySensor, GameState
 };
 
 #[derive(Default)]
@@ -19,12 +20,17 @@ pub struct ClawPlugin;
 impl Plugin for ClawPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(claw_lift_sync_system)
-            .add_system(claw_lift_activation_system)
-            .add_system(claw_lift_system)
-            .add_system(claw_return_system)
-            .add_system(claw_manual_control_system)
-            .add_system(claw_stopper_event_manager_system);
+            .add_system_set(
+                ConditionSet::new()
+                    .run_in_state(GameState::InGame)
+                    .with_system(claw_lift_sync_system)
+                    .with_system(claw_lift_activation_system)
+                    .with_system(claw_lift_system)
+                    .with_system(claw_return_system)
+                    .with_system(claw_manual_control_system)
+                    .with_system(claw_stopper_event_manager_system)
+                    .into()
+            );
     }
 }
 

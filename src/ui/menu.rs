@@ -1,7 +1,7 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
 use iyes_loopless::prelude::*;
 
-use crate::{ui::CursorControl, GameState};
+use crate::{ui::CursorControl, GameState, GameMode};
 
 use super::controls::*;
 
@@ -12,12 +12,23 @@ impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app
             // .add_system(main_menu_system.run_in_state(GameState::MainMenu))
+            .init_resource::<MenuButtonsStorage>()
             .add_enter_system(GameState::MainMenu, spawn_menu_system);
     }
 }
 
+#[derive(Default)]
+struct MenuButtonsStorage(HashMap<Entity, MenuButton>);
+
+#[derive(PartialEq, Eq, Hash)]
+enum MenuButton {
+    SpeedGame,
+    NumberGame
+}
+
 fn spawn_menu_system(
     controls: Res<Controls>,
+    mut menu_buttons: ResMut<MenuButtonsStorage>,
     mut commands: Commands
 ) {
     commands.spawn()
@@ -41,10 +52,16 @@ fn spawn_menu_system(
                 },
                 ..default()
             })
-                .with_children(|parent| {
-                    parent.spawn_control(controls.button("Number game"));
-                    parent.spawn_control(controls.button("Speed game").selected());
-                });
+            .with_children(|parent| {
+                menu_buttons.0.insert(
+                    parent.spawn_control(controls.button("Number game")).id.unwrap(),
+                    MenuButton::NumberGame
+                );
+                menu_buttons.0.insert(
+                    parent.spawn_control(controls.button("Speed game")).id.unwrap(),
+                    MenuButton::SpeedGame
+                );
+            });
 
             menu.spawn_bundle(TextBundle {
                 style: Style {
@@ -84,6 +101,25 @@ fn spawn_menu_system(
                     }
                 });
         });
+}
+
+fn handle_menu_click_system(
+    menu_buttons: Res<MenuButtonsStorage>,
+    events: EventReader<ButtonPressEvent>,
+    mut commands: Commands
+) {
+    for event in events.iter() {
+        let gamemode = match menu_buttons
+            .0
+            .get(&event.0)
+            .expect("Menu button for given entity does not exist!")
+        {
+            MenuButton::SpeedGame => GameMode::SpeedGame,
+            MenuButton::NumberGame => GameMode::NumberGame
+        };
+
+        commands.insert_resource(NextState(GameState::InGame(gamemode)));
+    }
 }
 
 fn main_menu_system(
