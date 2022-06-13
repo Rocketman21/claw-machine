@@ -28,6 +28,10 @@ pub struct AudioHandleStorage(pub HashMap<AudioCollection, Handle<AudioSource>>)
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum AudioCollection {
+    Background1,
+
+    Countdown,
+
     Glass3,
     Glass4,
 
@@ -38,6 +42,10 @@ pub enum AudioCollection {
     Drop5,
     Drop6,
 
+    Gameplay1,
+    Gameplay2,
+    Gameplay3,
+
     ButtonPress
 }
 
@@ -46,6 +54,10 @@ fn load_assets_system(
     mut asset_storage: ResMut<AudioHandleStorage>,
     mut assets_loading: ResMut<AssetsLoading>,
 ) {
+    asset_storage.0.insert(AudioCollection::Background1, asset_server.load("audio/background1.ogg"));
+
+    asset_storage.0.insert(AudioCollection::Countdown, asset_server.load("audio/countdown.ogg"));
+
     asset_storage.0.insert(AudioCollection::Glass3, asset_server.load("audio/glass3.ogg"));
     asset_storage.0.insert(AudioCollection::Glass4, asset_server.load("audio/glass4.ogg"));
 
@@ -55,6 +67,10 @@ fn load_assets_system(
     asset_storage.0.insert(AudioCollection::Drop4, asset_server.load("audio/drop4.ogg"));
     asset_storage.0.insert(AudioCollection::Drop5, asset_server.load("audio/drop5.ogg"));
     asset_storage.0.insert(AudioCollection::Drop6, asset_server.load("audio/drop6.ogg"));
+
+    asset_storage.0.insert(AudioCollection::Gameplay1, asset_server.load("audio/gameplay1.ogg"));
+    asset_storage.0.insert(AudioCollection::Gameplay2, asset_server.load("audio/gameplay2.ogg"));
+    asset_storage.0.insert(AudioCollection::Gameplay3, asset_server.load("audio/gameplay3.ogg"));
 
     asset_storage.0.insert(AudioCollection::ButtonPress, asset_server.load("audio/button.ogg"));
 

@@ -6,6 +6,7 @@ use camera::CameraPlugin;
 use claw::ClawPlugin;
 use claw_machine::ClawMachinePlugin;
 use controls::ControlsPlugin;
+use gameplay::GameplayPlugin;
 use glue::GluePlugin;
 use iyes_loopless::prelude::*;
 use movement::MovementPlugin;
@@ -24,6 +25,8 @@ mod constants;
 mod glue;
 mod room;
 mod claw_machine;
+mod helpers;
+mod gameplay;
 
 fn main() {
     App::new()
@@ -44,6 +47,7 @@ fn main() {
         .add_plugin(GluePlugin)
         .add_plugin(RoomPlugin)
         .add_plugin(ClawMachinePlugin)
+        .add_plugin(GameplayPlugin)
 
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         // .add_plugin(RapierDebugRenderPlugin::default())
@@ -51,14 +55,8 @@ fn main() {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GameMode {
-    SpeedGame,
-    NumberGame
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameState {
     Loading,
     MainMenu,
-    InGame(GameMode),
+    InGame
 }

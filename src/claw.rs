@@ -6,12 +6,13 @@ use rand::Rng;
 
 use crate::{
     assets::{
-        audio::{AudioHandleStorage, AudioCollection, DropAudioChannel}
+        audio::{AudioHandleStorage, AudioCollection, DropAudioChannel, BackgroundAudioChannel}
     },
     glue::Glue,
     movement::WASDMovement,
     constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},
-    toy::ToySensor, GameState
+    toy::ToySensor,
+    GameState
 };
 
 #[derive(Default)]
@@ -96,7 +97,8 @@ fn claw_lift_sync_system(
 
 fn claw_lift_activation_system(
     keyboard: Res<Input<KeyCode>>,
-    audio: Res<AudioChannel<DropAudioChannel>>,
+    audio_drop: Res<AudioChannel<DropAudioChannel>>,
+    audio_background: Res<AudioChannel<BackgroundAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
     mut claw_lift_query: Query<&mut ClawLift>,
     mut claw_controller_query: Query<&mut ClawController>,
@@ -108,8 +110,9 @@ fn claw_lift_activation_system(
             let sound = &DROP_SFX[rand::thread_rng().gen_range(0..DROP_SFX.len())];
 
             if let Some(drop_sfx) = audio_storage.0.get(sound) {
-                audio.set_volume(1.5);
-                audio.play(drop_sfx.clone());
+                audio_background.stop();
+                audio_drop.set_volume(1.5);
+                audio_drop.play(drop_sfx.clone());
             }
 
             claw_controller.0 = ClawControllerState::Locked;
@@ -210,7 +213,7 @@ fn claw_return_system(
                     ));
                 }
 
-                claw_controller.0 = ClawControllerState::Manual; // TODO Locked
+                claw_controller.0 = ClawControllerState::Locked;
             }
         }
     }

@@ -104,7 +104,7 @@ fn spawn_claw_machine_system(
         }
 
         commands.spawn()
-            .insert(ClawController(ClawControllerState::Manual))
+            .insert(ClawController(ClawControllerState::Locked))
             .insert(Collider::cuboid(0.2, 0.1, 0.2))
             .insert(ColliderMassProperties::Density(140.0))
             .insert(RigidBody::Dynamic)

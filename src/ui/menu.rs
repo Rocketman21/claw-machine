@@ -1,7 +1,8 @@
 use bevy::{prelude::*, utils::HashMap};
+use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
-use crate::{ui::CursorControl, GameState, GameMode};
+use crate::{ui::CursorControl, GameState, helpers::despawn_with, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, gameplay::{GameSettings, Gamemode}};
 
 use super::controls::*;
 
@@ -13,7 +14,10 @@ impl Plugin for MenuPlugin {
         app
             // .add_system(main_menu_system.run_in_state(GameState::MainMenu))
             .init_resource::<MenuButtonsStorage>()
-            .add_enter_system(GameState::MainMenu, spawn_menu_system);
+            .add_enter_system(GameState::MainMenu, spawn_menu_system)
+            .add_system(handle_menu_click_system.run_in_state(GameState::MainMenu))
+            .add_exit_system(GameState::MainMenu, despawn_with::<MainMenu>)
+            .add_exit_system(GameState::MainMenu, stop_music);
     }
 }
 
@@ -26,12 +30,22 @@ enum MenuButton {
     NumberGame
 }
 
+#[derive(Component)]
+struct MainMenu;
+
 fn spawn_menu_system(
     controls: Res<Controls>,
+    audio: Res<AudioChannel<BackgroundAudioChannel>>,
+    audio_storage: Res<AudioHandleStorage>,
     mut menu_buttons: ResMut<MenuButtonsStorage>,
     mut commands: Commands
 ) {
+    if let Some(music) = audio_storage.0.get(&AudioCollection::Background1) {
+        audio.play_looped(music.clone());
+    }
+
     commands.spawn()
+        .insert(MainMenu)
         .insert_bundle(TextBundle {
             style: Style {
                 flex_direction: FlexDirection::Column,
@@ -58,7 +72,7 @@ fn spawn_menu_system(
                     MenuButton::NumberGame
                 );
                 menu_buttons.0.insert(
-                    parent.spawn_control(controls.button("Speed game")).id.unwrap(),
+                    parent.spawn_control(controls.button("Speed game").selected()).id.unwrap(),
                     MenuButton::SpeedGame
                 );
             });
@@ -105,21 +119,25 @@ fn spawn_menu_system(
 
 fn handle_menu_click_system(
     menu_buttons: Res<MenuButtonsStorage>,
-    events: EventReader<ButtonPressEvent>,
+    mut game_settings: ResMut<GameSettings>,
+    mut events: EventReader<ButtonPressEvent>,
     mut commands: Commands
 ) {
     for event in events.iter() {
-        let gamemode = match menu_buttons
-            .0
-            .get(&event.0)
-            .expect("Menu button for given entity does not exist!")
-        {
-            MenuButton::SpeedGame => GameMode::SpeedGame,
-            MenuButton::NumberGame => GameMode::NumberGame
-        };
+        if let Some(menu_button) = menu_buttons.0.get(&event.0) {
+            game_settings.gamemode = Some(match menu_button {
+                MenuButton::SpeedGame => Gamemode::SpeedGame,
+                MenuButton::NumberGame => Gamemode::NumberGame
+            });
 
-        commands.insert_resource(NextState(GameState::InGame(gamemode)));
+            commands.insert_resource(NextState(GameState::InGame));
+        }
     }
+}
+
+// TODO into generic system
+fn stop_music(audio: Res<AudioChannel<BackgroundAudioChannel>>) {
+    audio.stop();
 }
 
 fn main_menu_system(

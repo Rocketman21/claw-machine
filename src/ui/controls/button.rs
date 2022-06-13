@@ -1,4 +1,4 @@
-use bevy::{prelude::*, ecs::system::EntityCommands};
+use bevy::prelude::*;
 use bevy_kira_audio::AudioChannel;
 
 use crate::assets::audio::{UiAudioChannel, AudioHandleStorage, AudioCollection};
@@ -39,6 +39,8 @@ pub struct ButtonState {
 }
 
 #[derive(Component)]
+pub struct ButtonComponent;
+#[derive(Component)]
 pub struct SelectedByDefault(bool);
 
 pub struct ButtonPressEvent(pub Entity);
@@ -49,8 +51,9 @@ impl<'w, 's, 'a> SpawnControl<'w, 's, 'a, Button<'a>> for ChildBuilder<'w, 's, '
 
         entity_commands.insert_bundle(TextBundle::default());
         entity_commands.with_children(|button| {
-            let id = button
-                .spawn_bundle(ButtonBundle {
+            let id = button.spawn()
+                .insert(ButtonComponent)
+                .insert_bundle(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(280.0), Val::Px(65.0)),
                         justify_content: JustifyContent::Center,
@@ -102,6 +105,10 @@ impl<'w, 's, 'a> SpawnControl<'w, 's, 'a, Button<'a>> for ChildBuilder<'w, 's, '
 
         control
     }
+}
+
+pub fn any_button_exist(query: Query<&ButtonComponent>) -> bool {
+    !query.is_empty()
 }
 
 pub fn handle_interaction_system(

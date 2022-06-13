@@ -1,7 +1,7 @@
-use bevy::{prelude::*, ecs::system::EntityCommands};
+use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system};
+use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system, any_button_exist};
 
 pub use self::button::ButtonPressEvent;
 
@@ -16,15 +16,15 @@ impl Plugin for ControlsPlugin {
             .init_resource::<Controls>()
             .init_resource::<ButtonState>()
             .add_event::<ButtonPressEvent>()
-            .add_system(button_animation_system.run_if(selected_button_changed))
-            .add_system(handle_interaction_system)
-            .add_system(keyboard_button_interaction_system)
-            .add_system(button_sfx_system);
-            // .add_system_set(
-            //     ConditionSet::new()
-            //         .run_if(buttons_spawned)
-            //         .into()
-            // );
+            .add_system_set(
+                ConditionSet::new()
+                    .run_if(any_button_exist)
+                    .with_system(button_animation_system.run_if(selected_button_changed))
+                    .with_system(handle_interaction_system)
+                    .with_system(keyboard_button_interaction_system)
+                    .with_system(button_sfx_system)
+                    .into()
+            );
     }
 }
 
