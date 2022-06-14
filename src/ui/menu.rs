@@ -2,7 +2,7 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
-use crate::{ui::CursorControl, GameState, helpers::despawn_with, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, gameplay::{GameSettings, Gamemode}};
+use crate::{ui::CursorControl, GameState, helpers::despawn_with, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, gameplay::{GameSettings, Gamemode}, constants::PURPLE_COLOR};
 
 use super::controls::*;
 
@@ -91,8 +91,8 @@ fn spawn_menu_system(
                             style: Style {
                                 position_type: PositionType::Absolute,
                                 position: Rect {
-                                    top: Val::Px(-index as f32),
-                                    left: Val::Px(-index as f32),
+                                    top: Val::Px((-index * 4) as f32),
+                                    left: Val::Px((-index * 4) as f32),
                                     ..default()
                                 },
                                 ..default()
@@ -103,9 +103,9 @@ fn spawn_menu_system(
                                     font: controls.header_font.clone(),
                                     font_size: 100.0,
                                     color: if index == 0 {
-                                        Color::GRAY
+                                        PURPLE_COLOR
                                     } else {
-                                        Color::WHITE
+                                        Color::ANTIQUE_WHITE
                                     },
                                 },
                                 default()

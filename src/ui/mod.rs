@@ -2,7 +2,7 @@ use bevy::{prelude::*, app::PluginGroupBuilder};
 
 use self::{menu::MenuPlugin, system_info::SystemInfoPlugin, controls::ControlsPlugin};
 
-mod controls;
+pub mod controls;
 mod menu;
 mod system_info;
 

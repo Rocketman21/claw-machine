@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_kira_audio::AudioChannel;
 
-use crate::assets::audio::{UiAudioChannel, AudioHandleStorage, AudioCollection};
+use crate::{assets::audio::{UiAudioChannel, AudioHandleStorage, AudioCollection}, constants::PURPLE_COLOR};
 
 use super::{Controls, SpawnControl};
 
@@ -14,11 +14,7 @@ pub struct Button<'a> {
 
 impl<'a> Button<'a> {
     const COLOR_NORMAL: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
-    const COLOR_ACTIVE: Color = Color::rgb(
-        114.0 / 255.0,
-        0.0,
-        163.0 / 255.0
-    );
+    const COLOR_ACTIVE: Color = PURPLE_COLOR;
     const ITERACTION_KEYS: [KeyCode; 3] = [
         KeyCode::W,
         KeyCode::S,
@@ -75,8 +71,8 @@ impl<'w, 's, 'a> SpawnControl<'w, 's, 'a, Button<'a>> for ChildBuilder<'w, 's, '
                             style: Style {
                                 position_type: PositionType::Absolute,
                                 position: Rect {
-                                    top: Val::Px(14.0 - index as f32),
-                                    left: Val::Px(20.0 - index as f32),
+                                    top: Val::Px(14.0 - (index * 2) as f32),
+                                    left: Val::Px(20.0 - (index * 2) as f32),
                                     ..default()
                                 },
                                 ..default()
@@ -87,9 +83,9 @@ impl<'w, 's, 'a> SpawnControl<'w, 's, 'a, Button<'a>> for ChildBuilder<'w, 's, '
                                     font: control.controls.font.clone(),
                                     font_size: 40.0,
                                     color: if index == 0 {
-                                        Color::GRAY
+                                        PURPLE_COLOR
                                     } else {
-                                        Color::WHITE
+                                        Color::ANTIQUE_WHITE
                                     },
                                 },
                                 default(),
