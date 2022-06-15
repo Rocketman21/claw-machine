@@ -11,8 +11,7 @@ use crate::{
     glue::Glue,
     movement::WASDMovement,
     constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},
-    toy::ToySensor,
-    GameState
+    toy::ToySensor, GameState, helpers::event_received, gamemodes::gameplay::Gamemode,
 };
 
 #[derive(Default)]
@@ -21,11 +20,14 @@ pub struct ClawPlugin;
 impl Plugin for ClawPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_event::<ReleaseClawEvent>()
+            .add_event::<ToyCatchEvent>()
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
                     .with_system(claw_lift_sync_system)
-                    .with_system(claw_lift_activation_system)
+                    .with_system(release_claw_with_keyboard_system)
+                    .with_system(claw_lift_activation_system.run_if(event_received::<ReleaseClawEvent>))
                     .with_system(claw_lift_system)
                     .with_system(claw_return_system)
                     .with_system(claw_manual_control_system)
@@ -34,6 +36,9 @@ impl Plugin for ClawPlugin {
             );
     }
 }
+
+pub struct ReleaseClawEvent;
+pub struct ToyCatchEvent;
 
 pub enum ClawControllerState {
     Locked,
@@ -96,41 +101,53 @@ fn claw_lift_sync_system(
 }
 
 fn claw_lift_activation_system(
-    keyboard: Res<Input<KeyCode>>,
     audio_drop: Res<AudioChannel<DropAudioChannel>>,
     audio_background: Res<AudioChannel<BackgroundAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
     mut claw_lift_query: Query<&mut ClawLift>,
     mut claw_controller_query: Query<&mut ClawController>,
+    mut commands: Commands
 ) {
-    if keyboard.just_pressed(KeyCode::Return) {
-        if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
-            claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
-        ) {
-            let sound = &DROP_SFX[rand::thread_rng().gen_range(0..DROP_SFX.len())];
+    if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
+        claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
+    ) {
+        let sound = &DROP_SFX[rand::thread_rng().gen_range(0..DROP_SFX.len())];
 
-            if let Some(drop_sfx) = audio_storage.0.get(sound) {
-                audio_background.stop();
-                audio_drop.set_volume(1.5);
-                audio_drop.play(drop_sfx.clone());
-            }
-
-            claw_controller.0 = ClawControllerState::Locked;
-            claw_lift.0 = ClawLiftState::Down;
+        if let Some(drop_sfx) = audio_storage.0.get(sound) {
+            audio_background.stop();
+            audio_drop.set_volume(1.5);
+            audio_drop.play(drop_sfx.clone());
         }
+
+        claw_controller.0 = ClawControllerState::Locked;
+        claw_lift.0 = ClawLiftState::Down;
+
+        // commands.insert_resource(NextState(Gamemode::None));
     }
 }
 
+fn release_claw_with_keyboard_system(
+    keyboard: Res<Input<KeyCode>>,
+    mut events: EventWriter<ReleaseClawEvent>
+) {
+    if keyboard.just_pressed(KeyCode::Return) {
+        events.send(ReleaseClawEvent);
+    }
+}
+
+
 fn claw_lift_system(
     time: Res<Time>,
-    mut claw_lift_query: Query<(&mut ClawLift, &mut Transform)>,
     mut collision_events: EventReader<CollisionEvent>,
+    mut toy_catch_events: EventWriter<ToyCatchEvent>,
+    mut claw_lift_query: Query<(&mut ClawLift, &mut Transform)>,
     claw_stopper_query: Query<Entity, With<ClawStopper>>,
     claw_sensor_query: Query<Entity, With<ClawSensor>>,
     toy_sensor_query: Query<Entity, With<ToySensor>>,
     mut claw_controller_query: Query<(&mut ClawController, &Transform), Without<ClawLift>>,
     parent_query: Query<&Parent>,
-    mut commands: Commands
+    mut commands: Commands,
+    curr_state: Res<CurrentState<Gamemode>>,
 ) {
     if let Ok((mut claw_lift, mut claw_lift_position)) = claw_lift_query.get_single_mut() {
         let height = claw_lift_position.translation.y;
@@ -151,6 +168,8 @@ fn claw_lift_system(
                                         && entities.into_iter().any(|entity| entity == &toy_sensor) {
                                         if let Ok(toy) = parent_query.get(toy_sensor) {
                                             commands.entity(claw_sensor).insert(Glue(toy.0));
+                                            toy_catch_events.send(ToyCatchEvent);
+                                            println!("ToyCaughtEvent sent. State: {:?}", curr_state.0);
                                         }
                                     }
                                 }
@@ -214,6 +233,7 @@ fn claw_return_system(
                 }
 
                 claw_controller.0 = ClawControllerState::Locked;
+                commands.insert_resource(NextState(GameState::ResultsMenu));
             }
         }
     }

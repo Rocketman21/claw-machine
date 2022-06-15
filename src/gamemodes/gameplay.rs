@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::{
     claw::{ClawController, ClawControllerState},
     GameState, assets::audio::{UiAudioChannel, AudioHandleStorage, AudioCollection, BackgroundAudioChannel},
-    ui::controls::Controls, constants::PURPLE_COLOR,
+    ui::controls::Controls, constants::PURPLE_COLOR, helpers::despawn_with,
 };
 
 #[derive(Default)]
@@ -16,24 +16,34 @@ impl Plugin for GameplayPlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<GameSettings>()
+            .add_loopless_state(Gamemode::None)
             .add_enter_system(GameState::InGame, setup_system)
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
                     .with_system(countdown_system)
                     .into()
-            );
+            )
+            .add_exit_system(GameState::InGame, despawn_with::<Countdown>);
+            // .add_exit_system(GameState::InGame, exit_system);
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Gamemode {
+    None,
     SpeedGame,
     NumberGame
 }
 
-#[derive(Default)]
 pub struct GameSettings {
-    pub gamemode: Option<Gamemode>
+    pub gamemode: Gamemode
+}
+
+impl Default for GameSettings {
+    fn default() -> Self {
+        Self { gamemode: Gamemode::None }
+    }
 }
 
 #[derive(Component)]
@@ -60,7 +70,7 @@ fn setup_system(
             .insert(Countdown(Timer::from_seconds(secs, false)))
             .insert_bundle(TextBundle {
                 style: Style {
-                    margin: Rect { top: Val::Percent(10.0), left: Val::Percent(50.0),..default() },
+                    margin: Rect { top: Val::Percent(10.0), left: Val::Percent(50.0), ..default() },
                     ..default()
                 },
                 ..default()
@@ -105,6 +115,7 @@ fn countdown_system(
     time: Res<Time>,
     audio: Res<AudioChannel<BackgroundAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
+    settings: Res<GameSettings>,
     mut query_countdown: Query<(Entity, &mut Countdown)>,
     mut query_text: Query<&mut Text, With<CountdownText>>,
     mut query_claw: Query<&mut ClawController>,
@@ -120,6 +131,8 @@ fn countdown_system(
                 }
 
                 claw_controller.0 = ClawControllerState::Manual;
+
+                commands.insert_resource(NextState(settings.gamemode));
                 commands.entity(entity).despawn_recursive();
             }
         }
@@ -128,4 +141,12 @@ fn countdown_system(
             text.sections[0].value = (3 - countdown.0.elapsed().as_secs()).to_string();
         }
     }
+}
+
+fn exit_system(
+    audio: Res<AudioChannel<BackgroundAudioChannel>>,
+    mut commands: Commands
+) {
+    audio.stop();
+    commands.insert_resource(NextState(Gamemode::None));
 }

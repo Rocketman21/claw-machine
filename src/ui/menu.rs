@@ -2,7 +2,7 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
-use crate::{ui::CursorControl, GameState, helpers::despawn_with, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, gameplay::{GameSettings, Gamemode}, constants::PURPLE_COLOR};
+use crate::{ui::CursorControl, GameState, helpers::despawn_with, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, gamemodes::gameplay::{Gamemode, GameSettings}, constants::PURPLE_COLOR};
 
 use super::controls::*;
 
@@ -119,16 +119,16 @@ fn spawn_menu_system(
 
 fn handle_menu_click_system(
     menu_buttons: Res<MenuButtonsStorage>,
-    mut game_settings: ResMut<GameSettings>,
+    mut settings: ResMut<GameSettings>,
     mut events: EventReader<ButtonPressEvent>,
     mut commands: Commands
 ) {
     for event in events.iter() {
         if let Some(menu_button) = menu_buttons.0.get(&event.0) {
-            game_settings.gamemode = Some(match menu_button {
+            settings.gamemode = match menu_button {
                 MenuButton::SpeedGame => Gamemode::SpeedGame,
                 MenuButton::NumberGame => Gamemode::NumberGame
-            });
+            };
 
             commands.insert_resource(NextState(GameState::InGame));
         }

@@ -6,7 +6,8 @@ use camera::CameraPlugin;
 use claw::ClawPlugin;
 use claw_machine::ClawMachinePlugin;
 use controls::ControlsPlugin;
-use gameplay::GameplayPlugin;
+use game_results::GameResultsPlugin;
+use gamemodes::GamemodePlugins;
 use glue::GluePlugin;
 use iyes_loopless::prelude::*;
 use movement::MovementPlugin;
@@ -26,7 +27,8 @@ mod glue;
 mod room;
 mod claw_machine;
 mod helpers;
-mod gameplay;
+mod gamemodes;
+mod game_results;
 
 fn main() {
     App::new()
@@ -47,7 +49,8 @@ fn main() {
         .add_plugin(GluePlugin)
         .add_plugin(RoomPlugin)
         .add_plugin(ClawMachinePlugin)
-        .add_plugin(GameplayPlugin)
+        .add_plugins(GamemodePlugins)
+        .add_plugin(GameResultsPlugin)
 
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         // .add_plugin(RapierDebugRenderPlugin::default())
@@ -58,5 +61,6 @@ fn main() {
 pub enum GameState {
     Loading,
     MainMenu,
-    InGame
+    InGame,
+    ResultsMenu
 }
