@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
-use rand::Rng;
 
 use crate::{
     claw::{ClawController, ClawControllerState},
@@ -24,8 +23,8 @@ impl Plugin for GameplayPlugin {
                     .with_system(countdown_system)
                     .into()
             )
-            .add_exit_system(GameState::InGame, despawn_with::<Countdown>);
-            // .add_exit_system(GameState::InGame, exit_system);
+            .add_exit_system(GameState::InGame, despawn_with::<Countdown>)
+            .add_exit_system(GameState::InGame, exit_system);
     }
 }
 
@@ -124,9 +123,7 @@ fn countdown_system(
     if let Ok((entity, mut countdown)) = query_countdown.get_single_mut() {
         if countdown.0.tick(time.delta()).just_finished() {
             if let Ok(mut claw_controller) = query_claw.get_single_mut() {
-                let sound = &GAMEPLAY_MUSIC[rand::thread_rng().gen_range(0..GAMEPLAY_MUSIC.len())];
-
-                if let Some(music) = audio_storage.0.get(sound) {
+                if let Some(music) = audio_storage.get_random(&GAMEPLAY_MUSIC) {
                     audio.play_looped(music.clone());
                 }
 
@@ -144,9 +141,7 @@ fn countdown_system(
 }
 
 fn exit_system(
-    audio: Res<AudioChannel<BackgroundAudioChannel>>,
     mut commands: Commands
 ) {
-    audio.stop();
     commands.insert_resource(NextState(Gamemode::None));
 }

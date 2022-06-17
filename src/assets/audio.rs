@@ -1,5 +1,6 @@
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioSource, AudioApp};
+use rand::Rng;
 
 use super::AssetsLoading;
 
@@ -26,6 +27,14 @@ impl Plugin for AudioLoaderPlugin {
 #[derive(PartialEq, Eq, Default)]
 pub struct AudioHandleStorage(pub HashMap<AudioCollection, Handle<AudioSource>>);
 
+impl AudioHandleStorage {
+    pub fn get_random(&self, collection: &[AudioCollection]) -> Option<&Handle<AudioSource>> {
+        let sound = &collection[rand::thread_rng().gen_range(0..collection.len())];
+
+        self.0.get(sound)
+    }
+}
+
 #[derive(PartialEq, Eq, Hash)]
 pub enum AudioCollection {
     Background1,
@@ -45,6 +54,12 @@ pub enum AudioCollection {
     Gameplay1,
     Gameplay2,
     Gameplay3,
+
+    Win1,
+
+    Defeat1,
+    Defeat2,
+    Defeat3,
 
     ButtonPress
 }
@@ -71,6 +86,12 @@ fn load_assets_system(
     asset_storage.0.insert(AudioCollection::Gameplay1, asset_server.load("audio/gameplay1.ogg"));
     asset_storage.0.insert(AudioCollection::Gameplay2, asset_server.load("audio/gameplay2.ogg"));
     asset_storage.0.insert(AudioCollection::Gameplay3, asset_server.load("audio/gameplay3.ogg"));
+
+    asset_storage.0.insert(AudioCollection::Win1, asset_server.load("audio/win1.ogg"));
+
+    asset_storage.0.insert(AudioCollection::Defeat1, asset_server.load("audio/defeat1.ogg"));
+    asset_storage.0.insert(AudioCollection::Defeat2, asset_server.load("audio/defeat2.ogg"));
+    asset_storage.0.insert(AudioCollection::Defeat3, asset_server.load("audio/defeat3.ogg"));
 
     asset_storage.0.insert(AudioCollection::ButtonPress, asset_server.load("audio/button.ogg"));
 

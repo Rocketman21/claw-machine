@@ -8,9 +8,3 @@ pub fn despawn_with<T: Component>(
         commands.entity(entity).despawn_recursive();
     }
 }
-
-pub fn event_received<T: Resource>(
-    events: EventReader<T>,
-) -> bool {
-    !events.is_empty()
-}

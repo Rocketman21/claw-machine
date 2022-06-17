@@ -4,7 +4,6 @@ use bevy::{prelude::*, gltf::Gltf};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
-use rand::Rng;
 
 use crate::{
     movement::WASDMovement,
@@ -179,11 +178,10 @@ fn glass_hit_system(
 
                 for glass in glass_query.iter() {
                     if entities.into_iter().any(|entity| entity == &glass) {
-                        let sound = &GLASS_SFX[rand::thread_rng().gen_range(0..GLASS_SFX.len())];
                         let hit_force = claw_velocity.linvel.abs().max_element();
 
                         if time.seconds_since_startup() - last_hit_time.0 > 0.5 {
-                            if let Some(glass_sound) = audio_storage.0.get(sound) {
+                            if let Some(glass_sound) = audio_storage.get_random(&GLASS_SFX) {
                                 audio.set_volume(0.07 / f32::ln(hit_force));
                                 audio.play(glass_sound.clone());
 

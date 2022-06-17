@@ -2,16 +2,14 @@ use bevy::{prelude::*, ecs::event::Events};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
-use rand::Rng;
 
 use crate::{
-    assets::{
-        audio::{AudioHandleStorage, AudioCollection, DropAudioChannel, BackgroundAudioChannel}
-    },
+    assets::audio::{AudioHandleStorage, AudioCollection, DropAudioChannel, BackgroundAudioChannel},
     glue::Glue,
     movement::WASDMovement,
     constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},
-    toy::ToySensor, GameState, helpers::event_received, gamemodes::gameplay::Gamemode,
+    toy::ToySensor,
+    GameState
 };
 
 #[derive(Default)]
@@ -27,7 +25,7 @@ impl Plugin for ClawPlugin {
                     .run_in_state(GameState::InGame)
                     .with_system(claw_lift_sync_system)
                     .with_system(release_claw_with_keyboard_system)
-                    .with_system(claw_lift_activation_system.run_if(event_received::<ReleaseClawEvent>))
+                    .with_system(claw_lift_activation_system.run_on_event::<ReleaseClawEvent>())
                     .with_system(claw_lift_system)
                     .with_system(claw_return_system)
                     .with_system(claw_manual_control_system)
@@ -106,14 +104,11 @@ fn claw_lift_activation_system(
     audio_storage: Res<AudioHandleStorage>,
     mut claw_lift_query: Query<&mut ClawLift>,
     mut claw_controller_query: Query<&mut ClawController>,
-    mut commands: Commands
 ) {
     if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
         claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
     ) {
-        let sound = &DROP_SFX[rand::thread_rng().gen_range(0..DROP_SFX.len())];
-
-        if let Some(drop_sfx) = audio_storage.0.get(sound) {
+        if let Some(drop_sfx) = audio_storage.get_random(&DROP_SFX) {
             audio_background.stop();
             audio_drop.set_volume(1.5);
             audio_drop.play(drop_sfx.clone());
@@ -121,8 +116,6 @@ fn claw_lift_activation_system(
 
         claw_controller.0 = ClawControllerState::Locked;
         claw_lift.0 = ClawLiftState::Down;
-
-        // commands.insert_resource(NextState(Gamemode::None));
     }
 }
 
@@ -147,7 +140,6 @@ fn claw_lift_system(
     mut claw_controller_query: Query<(&mut ClawController, &Transform), Without<ClawLift>>,
     parent_query: Query<&Parent>,
     mut commands: Commands,
-    curr_state: Res<CurrentState<Gamemode>>,
 ) {
     if let Ok((mut claw_lift, mut claw_lift_position)) = claw_lift_query.get_single_mut() {
         let height = claw_lift_position.translation.y;
@@ -169,7 +161,6 @@ fn claw_lift_system(
                                         if let Ok(toy) = parent_query.get(toy_sensor) {
                                             commands.entity(claw_sensor).insert(Glue(toy.0));
                                             toy_catch_events.send(ToyCatchEvent);
-                                            println!("ToyCaughtEvent sent. State: {:?}", curr_state.0);
                                         }
                                     }
                                 }
