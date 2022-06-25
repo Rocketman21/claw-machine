@@ -31,6 +31,8 @@ bevy_rapier3d = { version = "0.13.2", features = ["simd-nightly"] }
 bevy_kira_audio = { git = "https://github.com/NiklasEi/bevy_kira_audio", rev = "c6970f6d480f4425d665ba62a3e3d6cb1d67fee1" }
 rand = "0.8.4"
 iyes_loopless = "0.5.1"
+strum = "0.24.0"
+strum_macros = "0.24.0"
 
 # Fast compile
 [toolchain]

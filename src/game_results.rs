@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
-use crate::{gamemodes::speed_game::SpeedGameProgress, GameState, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}};
+use crate::{gamemodes::speed_game::SpeedGameProgress, GameState, assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection}, helpers::despawn_with};
 
 #[derive(Default)]
 pub struct GameResultsPlugin;
@@ -12,11 +12,11 @@ impl Plugin for GameResultsPlugin {
         app
             .add_system_set(
                 ConditionSet::new()
-                    .run_in_state(GameState::ResultsMenu)
+                    .run_in_state(GameState::GameResults)
                     .with_system(setup_system)
                     .into()
-            );
-            // .add_exit_system(GameState::InGame, despawn_with::<Countdown>);
+            )
+            .add_exit_system(GameState::GameResults, despawn_with::<GameResults>);
             // .add_exit_system(GameState::InGame, exit_system);
     }
 }

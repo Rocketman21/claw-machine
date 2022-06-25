@@ -1,6 +1,8 @@
 use bevy::{prelude::*, utils::HashMap};
 use bevy_kira_audio::{AudioSource, AudioApp};
 use rand::Rng;
+use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumIter};
 
 use super::AssetsLoading;
 
@@ -35,7 +37,7 @@ impl AudioHandleStorage {
     }
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Display, EnumIter, Clone, Copy)]
 pub enum AudioCollection {
     Background1,
 
@@ -61,7 +63,7 @@ pub enum AudioCollection {
     Defeat2,
     Defeat3,
 
-    ButtonPress
+    Button
 }
 
 fn load_assets_system(
@@ -69,31 +71,12 @@ fn load_assets_system(
     mut asset_storage: ResMut<AudioHandleStorage>,
     mut assets_loading: ResMut<AssetsLoading>,
 ) {
-    asset_storage.0.insert(AudioCollection::Background1, asset_server.load("audio/background1.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Countdown, asset_server.load("audio/countdown.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Glass3, asset_server.load("audio/glass3.ogg"));
-    asset_storage.0.insert(AudioCollection::Glass4, asset_server.load("audio/glass4.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Drop1, asset_server.load("audio/drop1.ogg"));
-    asset_storage.0.insert(AudioCollection::Drop2, asset_server.load("audio/drop2.ogg"));
-    asset_storage.0.insert(AudioCollection::Drop3, asset_server.load("audio/drop3.ogg"));
-    asset_storage.0.insert(AudioCollection::Drop4, asset_server.load("audio/drop4.ogg"));
-    asset_storage.0.insert(AudioCollection::Drop5, asset_server.load("audio/drop5.ogg"));
-    asset_storage.0.insert(AudioCollection::Drop6, asset_server.load("audio/drop6.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Gameplay1, asset_server.load("audio/gameplay1.ogg"));
-    asset_storage.0.insert(AudioCollection::Gameplay2, asset_server.load("audio/gameplay2.ogg"));
-    asset_storage.0.insert(AudioCollection::Gameplay3, asset_server.load("audio/gameplay3.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Win1, asset_server.load("audio/win1.ogg"));
-
-    asset_storage.0.insert(AudioCollection::Defeat1, asset_server.load("audio/defeat1.ogg"));
-    asset_storage.0.insert(AudioCollection::Defeat2, asset_server.load("audio/defeat2.ogg"));
-    asset_storage.0.insert(AudioCollection::Defeat3, asset_server.load("audio/defeat3.ogg"));
-
-    asset_storage.0.insert(AudioCollection::ButtonPress, asset_server.load("audio/button.ogg"));
+    for audio in AudioCollection::iter() {
+        asset_storage.0.insert(
+            audio,
+            asset_server.load(format!("audio/{}.ogg", audio.to_string().to_lowercase()).as_str())
+        );
+    }
 
     assets_loading.add_storage(&asset_storage.0);
 }

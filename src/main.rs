@@ -62,5 +62,5 @@ pub enum GameState {
     Loading,
     MainMenu,
     InGame,
-    ResultsMenu
+    GameResults
 }

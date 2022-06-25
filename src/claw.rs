@@ -224,7 +224,7 @@ fn claw_return_system(
                 }
 
                 claw_controller.0 = ClawControllerState::Locked;
-                commands.insert_resource(NextState(GameState::ResultsMenu));
+                commands.insert_resource(NextState(GameState::GameResults));
             }
         }
     }

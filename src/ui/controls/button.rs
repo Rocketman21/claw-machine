@@ -202,7 +202,7 @@ pub fn button_sfx_system(
     audio_storage: Res<AudioHandleStorage>,
 ) {
     for _ in events.iter() {
-        if let Some(sfx) = audio_storage.0.get(&AudioCollection::ButtonPress) {
+        if let Some(sfx) = audio_storage.0.get(&AudioCollection::Button) {
             audio.play(sfx.clone());
         }
     }
