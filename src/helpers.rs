@@ -1,4 +1,4 @@
-use bevy::{prelude::*, ecs::system::Resource};
+use bevy::prelude::*;
 
 pub fn despawn_with<T: Component>(
     mut commands: Commands,

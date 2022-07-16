@@ -1,11 +1,14 @@
+use std::marker::PhantomData;
+
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use self::button::{Button, button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system, any_button_exist};
+use self::{button::{button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system, button_spawner_system, CMUIButton}, menu::menu_spawner_system};
 
 pub use self::button::ButtonPressEvent;
 
-mod button;
+pub mod button;
+pub mod menu;
 
 #[derive(Default)]
 pub struct ControlsPlugin;
@@ -18,25 +21,21 @@ impl Plugin for ControlsPlugin {
             .add_event::<ButtonPressEvent>()
             .add_system_set(
                 ConditionSet::new()
-                    .run_if(any_button_exist)
+                    .run_if(control_type_exist::<CMUIButton>)
                     .with_system(button_animation_system.run_if(selected_button_changed))
                     .with_system(handle_interaction_system)
                     .with_system(keyboard_button_interaction_system)
                     .with_system(button_sfx_system)
                     .into()
-            );
+            )
+            .add_system(button_spawner_system)
+            .add_system(menu_spawner_system);
     }
 }
 
 pub struct Controls {
     pub font: Handle<Font>,
     pub header_font: Handle<Font>,
-}
-
-impl Controls {
-    pub fn button(&self, text: &str) -> Button {
-        Button { controls: self, id: None, text: text.to_string(), is_selected_by_default: false }
-    }
 }
 
 impl FromWorld for Controls {
@@ -49,7 +48,18 @@ impl FromWorld for Controls {
         }
     }
 }
+ 
+#[derive(Component)]
+pub struct SpawnedControl<T> {
+    control_type: PhantomData<T>,
+}
 
-pub trait SpawnControl<'w, 's, 'a, T> {
-    fn spawn_control(&mut self, control: T) -> T;
+impl<T> SpawnedControl<T> {
+    fn new() -> Self {
+        Self { control_type: PhantomData }
+    }
+}
+
+pub fn control_type_exist<T: Component>(query: Query<With<SpawnedControl<T>>>) -> bool {
+    !query.is_empty()
 }

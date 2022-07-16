@@ -1,9 +1,9 @@
 use bevy::{prelude::*, app::PluginGroupBuilder};
 
-use self::{menu::MenuPlugin, system_info::SystemInfoPlugin, controls::ControlsPlugin};
+use self::{main_menu::MenuPlugin, system_info::SystemInfoPlugin, controls::ControlsPlugin};
 
 pub mod controls;
-mod menu;
+mod main_menu;
 mod system_info;
 
 #[derive(Default)]
