@@ -3,12 +3,16 @@ use std::marker::PhantomData;
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use self::{button::{button_animation_system, keyboard_button_interaction_system, handle_interaction_system, selected_button_changed, ButtonState, button_sfx_system, button_spawner_system, CMUIButton}, menu::menu_spawner_system};
+use self::{
+    button::*,
+    menu::menu_spawner_system, in_game_text::in_game_text_spawner_system
+};
 
 pub use self::button::ButtonPressEvent;
 
 pub mod button;
 pub mod menu;
+pub mod in_game_text;
 
 #[derive(Default)]
 pub struct ControlsPlugin;
@@ -29,7 +33,9 @@ impl Plugin for ControlsPlugin {
                     .into()
             )
             .add_system(button_spawner_system)
-            .add_system(menu_spawner_system);
+            .add_system(clear_button_state.run_if_not(control_type_exist::<CMUIButton>))
+            .add_system(menu_spawner_system)
+            .add_system(in_game_text_spawner_system);
     }
 }
 

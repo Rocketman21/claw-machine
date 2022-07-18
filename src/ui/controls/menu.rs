@@ -6,7 +6,7 @@ use super::{Controls, SpawnedControl, button::CMUIButton};
 
 #[derive(Component)]
 pub struct CMUIMenu {
-    pub title: &'static str,
+    pub title: String,
     pub buttons: Vec<CMUIButton>,
 }
 
@@ -32,7 +32,7 @@ pub fn menu_spawner_system(
             .with_children(|menu| {
                 menu.spawn_bundle(TextBundle {
                     style: Style {
-                        flex_direction: FlexDirection::Column,
+                        flex_direction: FlexDirection::ColumnReverse,
                         margin: Rect { left: Val::Px(50.0), ..default() },
                         ..default()
                     },
@@ -67,7 +67,7 @@ pub fn menu_spawner_system(
                                     ..default()
                                 },
                                 text: Text::with_section(
-                                    component.title,
+                                    component.title.to_string(),
                                     TextStyle {
                                         font: controls.header_font.clone(),
                                         font_size: 100.0,

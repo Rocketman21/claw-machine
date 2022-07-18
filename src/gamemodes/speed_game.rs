@@ -3,7 +3,7 @@ use iyes_loopless::prelude::*;
 
 use crate:: {
     gamemodes::gameplay::Gamemode,
-    claw::{ReleaseClawEvent, ToyCatchEvent}, game_results::GameResults, constants::PURPLE_COLOR, ui::controls::Controls,
+    claw::{ReleaseClawEvent, ToyCatchEvent}, game_results::GameResults, ui::controls::in_game_text::InGameText,
 };
 
 #[derive(Default)]
@@ -41,59 +41,16 @@ impl Default for SpeedGameProgress {
     }
 }
 
-#[derive(Component)]
-struct ProgressText;
-
-fn setup_system(
-    controls: Res<Controls>,
-    mut commands: Commands,
-) {
+fn setup_system(mut commands: Commands) {
     commands.spawn()
         .insert(SpeedGameProgress::default())
-        .insert_bundle(TextBundle {
-            style: Style {
-                margin: Rect { top: Val::Percent(10.0), left: Val::Percent(20.0), ..default() },
-                ..default()
-            },
-            ..default()
-        })
-        .with_children(|parent| {
-            for index in 0..=1 {
-                parent.spawn()
-                    .insert(ProgressText)
-                    .insert_bundle(TextBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            position: Rect {
-                                top: Val::Px((-index * 4) as f32),
-                                left: Val::Px((-index * 4) as f32),
-                                ..default()
-                            },
-                            ..default()
-                        },
-                        text: Text::with_section(
-                            "",
-                            TextStyle {
-                                font: controls.header_font.clone(),
-                                font_size: 150.0,
-                                color: if index == 0 {
-                                    PURPLE_COLOR
-                                } else {
-                                    Color::ANTIQUE_WHITE
-                                },
-                            },
-                            default()
-                        ),
-                        ..default()
-                    });
-            }
-        });
+        .insert(InGameText(String::new()));
 }
 
 fn speed_game_system(
     time: Res<Time>,
     mut query_progress: Query<&mut SpeedGameProgress>,
-    mut query_text: Query<&mut Text, With<ProgressText>>,
+    mut query_text: Query<&mut Text, With<InGameText>>,
     mut events: EventWriter<ReleaseClawEvent>
 ) {
     if let Ok(mut progress) = query_progress.get_single_mut() {

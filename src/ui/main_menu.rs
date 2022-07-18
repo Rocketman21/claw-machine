@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, app::AppExit};
 use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 use strum_macros::Display;
@@ -29,7 +29,8 @@ impl Plugin for MenuPlugin {
 #[derive(PartialEq, Eq, Hash, Display)]
 enum MenuButton {
     SpeedGame,
-    NumberGame
+    NumberGame,
+    Quit
 }
 
 fn main_menu_system(
@@ -43,10 +44,11 @@ fn main_menu_system(
 
     commands.spawn()
         .insert(CMUIMenu {
-            title: "Menu",
+            title: "Menu".to_string(),
             buttons: vec![
-                CMUIButton::new(MenuButton::NumberGame, "Number game"),
                 CMUIButton::new(MenuButton::SpeedGame, "Speed game").selected(),
+                CMUIButton::new(MenuButton::NumberGame, "Number game"),
+                CMUIButton::new(MenuButton::Quit, "Quit"),
             ]
         });
 }
@@ -54,13 +56,18 @@ fn main_menu_system(
 fn handle_menu_click_system(
     mut settings: ResMut<GameSettings>,
     mut events: EventReader<ButtonPressEvent>,
+    mut app_exit_events: EventWriter<AppExit>,
     mut commands: Commands
 ) {
     for event in events.iter() {
         settings.gamemode = if event.0 == MenuButton::SpeedGame.to_string() {
             Gamemode::SpeedGame
-        } else {
+        } else if event.0 == MenuButton::NumberGame.to_string() {
             Gamemode::NumberGame
+        } else {
+            app_exit_events.send(AppExit);
+
+            Gamemode::None
         };
 
         commands.insert_resource(NextState(GameState::InGame));

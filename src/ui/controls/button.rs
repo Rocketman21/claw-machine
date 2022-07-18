@@ -53,6 +53,7 @@ pub fn button_spawner_system(
             .insert(SpawnedControl::<CMUIButton>::new())
             .with_children(|button| {
                 button.spawn()
+                    .insert(SelectedByDefault(component.is_selected_by_default))
                     .insert_bundle(ButtonBundle {
                         style: Style {
                             size: Size::new(Val::Px(280.0), Val::Px(65.0)),
@@ -68,7 +69,6 @@ pub fn button_spawner_system(
                         },
                         ..default()
                     })
-                    .insert(SelectedByDefault(component.is_selected_by_default))
                     .with_children(|parent| {
                         for index in 0..=1 {
                             parent.spawn_bundle(TextBundle {
@@ -159,8 +159,9 @@ pub fn keyboard_button_interaction_system(
 ) {
     if keyboard.any_just_pressed(CMUIButton::ITERACTION_KEYS) {
         let mut iter = query.iter();
-        let first_entity = iter.nth(0).unwrap().0;
-        let last_entity = iter.last().unwrap().0;
+        let first_entity = iter.nth(0).unwrap();
+        let last_entity = iter.last().unwrap_or(first_entity).0;
+        let first_entity = first_entity.0;
 
         for (index, (entity, selected_by_default, _)) in query.iter().enumerate() {
             if keyboard.just_pressed(KeyCode::S) || keyboard.just_pressed(KeyCode::W) {
@@ -174,7 +175,7 @@ pub fn keyboard_button_interaction_system(
                     )
                 };
 
-                if Some(entity) == state.selected || selected_by_default.0 {
+                if Some(entity) == state.selected || (state.selected.is_none() && selected_by_default.0) {
                     if let Some((next_entity, _, _)) = query.iter().nth(next_index) {
                         state.selected = Some(next_entity);
                     } else {
@@ -218,5 +219,11 @@ pub fn button_sfx_system(
         if let Some(sfx) = audio_storage.0.get(&AudioCollection::Button) {
             audio.play(sfx.clone());
         }
+    }
+}
+
+pub fn clear_button_state(mut state: ResMut<ButtonState>) {
+    if state.selected.is_some() {
+        *state = ButtonState::default();
     }
 }
