@@ -20,6 +20,7 @@ impl Plugin for ClawPlugin {
         app
             .add_event::<ReleaseClawEvent>()
             .add_event::<ToyCatchEvent>()
+            .add_event::<ClawReturnedToBaseEvent>()
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::InGame)
@@ -37,6 +38,7 @@ impl Plugin for ClawPlugin {
 
 pub struct ReleaseClawEvent;
 pub struct ToyCatchEvent;
+pub struct ClawReturnedToBaseEvent;
 
 pub enum ClawControllerState {
     Locked,
@@ -100,7 +102,6 @@ fn claw_lift_sync_system(
 
 fn claw_lift_activation_system(
     audio_drop: Res<AudioChannel<DropAudioChannel>>,
-    audio_background: Res<AudioChannel<BackgroundAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
     mut claw_lift_query: Query<&mut ClawLift>,
     mut claw_controller_query: Query<&mut ClawController>,
@@ -108,20 +109,21 @@ fn claw_lift_activation_system(
     if let (Ok(mut claw_lift), Ok(mut claw_controller)) = (
         claw_lift_query.get_single_mut(), claw_controller_query.get_single_mut()
     ) {
-        if let Some(drop_sfx) = audio_storage.get_random(&DROP_SFX) {
-            audio_background.stop();
-            audio_drop.set_volume(1.5);
-            audio_drop.play(drop_sfx.clone());
+        if let ClawControllerState::Manual = claw_controller.0 {
+            if let Some(drop_sfx) = audio_storage.get_random(&DROP_SFX) {
+                audio_drop.set_volume(1.5);
+                audio_drop.play(drop_sfx.clone());
+            }
+    
+            claw_controller.0 = ClawControllerState::Locked;
+            claw_lift.0 = ClawLiftState::Down;
         }
-
-        claw_controller.0 = ClawControllerState::Locked;
-        claw_lift.0 = ClawLiftState::Down;
     }
 }
 
 fn release_claw_with_keyboard_system(
     keyboard: Res<Input<KeyCode>>,
-    mut events: EventWriter<ReleaseClawEvent>
+    mut events: EventWriter<ReleaseClawEvent>,
 ) {
     if keyboard.just_pressed(KeyCode::Return) {
         events.send(ReleaseClawEvent);
@@ -201,6 +203,7 @@ fn claw_lift_system(
 
 fn claw_return_system(
     time: Res<Time>,
+    mut events: EventWriter<ClawReturnedToBaseEvent>,
     mut claw_controller_query: Query<(&mut ClawController, &mut Transform)>,
     glue_query: Query<(Entity, &Glue), With<ClawSensor>>,
     mut commands: Commands,
@@ -224,7 +227,7 @@ fn claw_return_system(
                 }
 
                 claw_controller.0 = ClawControllerState::Locked;
-                commands.insert_resource(NextState(GameState::GameResults));
+                events.send(ClawReturnedToBaseEvent);
             }
         }
     }

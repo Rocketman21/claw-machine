@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::HashMap};
-use bevy_kira_audio::{AudioSource, AudioApp};
+use bevy_kira_audio::{AudioSource, AudioApp, AudioChannel};
 use rand::Rng;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
@@ -79,4 +79,10 @@ fn load_assets_system(
     }
 
     assets_loading.add_storage(&asset_storage.0);
+}
+
+pub fn stop_background_audio_system(
+    audio_background: Res<AudioChannel<BackgroundAudioChannel>>,
+) {
+    audio_background.stop();
 }

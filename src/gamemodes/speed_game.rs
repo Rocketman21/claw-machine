@@ -1,9 +1,13 @@
 use bevy::prelude::*;
+use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
 use crate:: {
     gamemodes::gameplay::Gamemode,
-    claw::{ReleaseClawEvent, ToyCatchEvent}, game_results::GameResults, ui::controls::in_game_text::InGameText,
+    GameState,
+    claw::{ReleaseClawEvent, ToyCatchEvent, ClawReturnedToBaseEvent},
+    game_results::GameResults,
+    ui::controls::in_game_text::InGameText, assets::audio::{BackgroundAudioChannel, stop_background_audio_system},
 };
 
 #[derive(Default)]
@@ -19,6 +23,8 @@ impl Plugin for SpeedGamePlugin {
                     .with_system(register_toy_catch.run_on_event::<ToyCatchEvent>())
                     .with_system(pause_timer.run_on_event::<ReleaseClawEvent>())
                     .with_system(speed_game_system)
+                    .with_system(to_game_results_system.run_on_event::<ClawReturnedToBaseEvent>())
+                    .with_system(stop_background_audio_system.run_on_event::<ReleaseClawEvent>())
                     .into()
             )
             .add_exit_system(Gamemode::SpeedGame, exit_system);
@@ -37,7 +43,10 @@ impl SpeedGameProgress {
 
 impl Default for SpeedGameProgress {
     fn default() -> Self {
-        Self { timer: Timer::from_seconds(SpeedGameProgress::TIME_TO_CATCH, false), toy_caught: false }
+        Self {
+            timer: Timer::from_seconds(SpeedGameProgress::TIME_TO_CATCH, false),
+            toy_caught: false
+        }
     }
 }
 
@@ -76,6 +85,10 @@ fn pause_timer(mut query: Query<&mut SpeedGameProgress>) {
     if let Ok(mut progress) = query.get_single_mut() {
         progress.timer.pause();
     }
+}
+
+fn to_game_results_system(mut commands: Commands) {
+    commands.insert_resource(NextState(GameState::GameResults));
 }
 
 fn exit_system(

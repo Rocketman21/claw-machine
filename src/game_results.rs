@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 use strum_macros::Display;
 
 use crate::{
-    gamemodes::speed_game::SpeedGameProgress,
+    gamemodes::{speed_game::SpeedGameProgress, number_game::NumberGameProgress},
     GameState,
     assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection},
     helpers::despawn_with,
@@ -32,7 +32,8 @@ impl Plugin for GameResultsPlugin {
 
 #[derive(Component)]
 pub enum GameResults {
-    SpeedGame(SpeedGameProgress)
+    SpeedGame(SpeedGameProgress),
+    NumberGame(NumberGameProgress)
 }
 
 const DEFEAT_SFX: [AudioCollection; 3] = [
@@ -53,32 +54,40 @@ fn setup_system(
     mut commands: Commands,
 ) {
     if let Ok(results) = query.get_single() {
+        let is_win: bool;
+        let win_text: String;
+
         match results {
             GameResults::SpeedGame(progress) => {
-                if progress.toy_caught {
-                    if let Some(sfx) = audio_storage.0.get(&AudioCollection::Win1) {
-                        audio.play(sfx.clone());
-                    }
-                } else {
-                    if let Some(sfx) = audio_storage.get_random(&DEFEAT_SFX) {
-                        audio.play(sfx.clone());
-                    }
-                }
-
-                commands.spawn()
-                    .insert(CMUIMenu {
-                        title: if progress.toy_caught {
-                            format!("Caught: {:.2} sec!", &progress.timer.elapsed_secs())
-                        } else {
-                            "You lose =(".to_string()
-                        },
-                        buttons: vec![
-                            CMUIButton::new(ResultButtons::MainMenu.to_string(), "Main menu >").selected(),
-                        ]
-                    });
-                // println!("Game results: Time: {}, Toy: {}", progress.timer.elapsed_secs(), progress.toy_caught);
+                is_win = progress.toy_caught;
+                win_text = format!("Caught: {:.2} sec!", &progress.timer.elapsed_secs());
+            }
+            GameResults::NumberGame(progress) => {
+                is_win = progress.toys_caught > 0;
+                win_text = format!(
+                    "{} toy{}!",
+                    &progress.toys_caught,
+                    if progress.toys_caught != 1 { "s" } else { "" }
+                );
             }
         }
+
+        if is_win {
+            audio_storage.0.get(&AudioCollection::Win1)
+        } else {
+            audio_storage.get_random(&DEFEAT_SFX)
+        }.and_then(|sfx| Some(audio.play(sfx.clone())));
+
+        commands.spawn().insert(CMUIMenu {
+            title: if is_win {
+                win_text
+            } else {
+                "You lose =(".to_string()
+            },
+            buttons: vec![
+                CMUIButton::new(ResultButtons::MainMenu.to_string(), "Main menu").selected(),
+            ]
+        });
     }
 }
 
