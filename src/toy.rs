@@ -6,7 +6,7 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     assets::gltf::{GltfHandleStorage, GltfCollection},
-    constants::{COL_GROUP_ALL, COL_GROUP_CLAW, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY}, GameState
+    constants::{COL_GROUP_ALL, COL_GROUP_CLAW, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY}, GameState, helpers::despawn_with
 };
 
 #[derive(Default)]
@@ -23,10 +23,15 @@ impl Toy {
 impl Plugin for ToyPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_event::<RespawnToysEvent>()
             .add_exit_system(GameState::Loading, spawn_toys_system)
-            .add_system(toy_speed_control_system);
+            .add_system(toy_speed_control_system)
+            .add_system(despawn_with::<Toy>.run_on_event::<RespawnToysEvent>())
+            .add_system(spawn_toys_system.run_on_event::<RespawnToysEvent>());
     }
 }
+
+pub struct RespawnToysEvent;
 
 fn toy_speed_control_system(mut query: Query<&mut Velocity, With<Toy>>) {
     for mut velocity in query.iter_mut() {

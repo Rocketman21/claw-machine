@@ -1,13 +1,13 @@
 use std::f32::consts::PI;
 
-use bevy::{prelude::*, gltf::Gltf};
+use bevy::{prelude::{*, shape::Capsule}, gltf::Gltf};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
     movement::WASDMovement,
-    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState, ClawControllerState},
+    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState, ClawControllerState, ClawString},
     constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY, COL_GROUP_GLASS, COL_GROUP_BOTTOM_GLASS},
     assets::{
         gltf::{GltfCollection, GltfHandleStorage},
@@ -42,6 +42,8 @@ const GLASS_SFX: [AudioCollection; 2] = [
 fn spawn_claw_machine_system(
     assets: Res<Assets<Gltf>>,
     asset_storage: Res<GltfHandleStorage>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands
 ) {
     if let Some(gltf) = assets.get(asset_storage.0.get(&GltfCollection::ClawMachine).unwrap()) {
@@ -104,13 +106,32 @@ fn spawn_claw_machine_system(
 
         commands.spawn()
             .insert(ClawController(ClawControllerState::Locked))
+            .insert_bundle((
+                Transform::from_translation(ClawController::BASE_POS.into()),
+                GlobalTransform::identity()
+            ))
             .insert(Collider::cuboid(0.2, 0.1, 0.2))
             .insert(ColliderMassProperties::Density(140.0))
             .insert(RigidBody::Dynamic)
-            .insert(Transform::from_translation(ClawController::BASE_POS.into()))
             .insert(LockedAxes::TRANSLATION_LOCKED_Y | LockedAxes::ROTATION_LOCKED)
             .insert(ExternalImpulse::default())
-            .insert(WASDMovement);
+            .insert(WASDMovement)
+            .with_children(|parent| {
+                parent.spawn()
+                    .insert(ClawString)
+                    .insert_bundle(PbrBundle {
+                        transform: Transform::from_xyz(0.0, ClawString::START_HEIGHT, 0.0),
+                        mesh: meshes.add(
+                             Capsule {
+                                radius: ClawString::RADIUS,
+                                depth: ClawString::DEPTH,
+                                ..default()
+                            }.into()
+                        ),
+                        material: materials.add(Color::BLACK.into()),
+                        ..default()
+                    });
+            });
 
         let claw_lift = commands.spawn()
             .insert(ClawLift(ClawLiftState::Off))

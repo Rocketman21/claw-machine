@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 use crate::{
     claw::{ClawController, ClawControllerState},
     GameState, assets::audio::{UiAudioChannel, AudioHandleStorage, AudioCollection, BackgroundAudioChannel},
-    ui::controls::Controls, constants::PURPLE_COLOR, helpers::despawn_with,
+    ui::controls::Controls, constants::PURPLE_COLOR, helpers::despawn_with, toy::RespawnToysEvent,
 };
 
 #[derive(Default)]
@@ -60,8 +60,11 @@ fn setup_system(
     audio: Res<AudioChannel<UiAudioChannel>>,
     audio_storage: Res<AudioHandleStorage>,
     controls: Res<Controls>,
+    mut events: EventWriter<RespawnToysEvent>,
     mut commands: Commands,
 ) {
+    events.send(RespawnToysEvent);
+
     if let Some(countdown) = audio_storage.0.get(&AudioCollection::Countdown) {
         let secs = 3.0;
 

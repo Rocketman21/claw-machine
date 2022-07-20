@@ -1,4 +1,4 @@
-use bevy::{prelude::*, ecs::event::Events};
+use bevy::{prelude::{*, shape::Capsule}, ecs::{event::Events, query}};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
@@ -31,6 +31,7 @@ impl Plugin for ClawPlugin {
                     .with_system(claw_return_system)
                     .with_system(claw_manual_control_system)
                     .with_system(claw_stopper_event_manager_system)
+                    .with_system(claw_string_system)
                     .into()
             );
     }
@@ -65,6 +66,8 @@ pub struct ClawSensor;
 #[derive(Component)]
 pub struct ClawStopper;
 #[derive(Component)]
+pub struct ClawString;
+#[derive(Component)]
 pub struct PositionLock;
 
 impl ClawController {
@@ -75,6 +78,12 @@ impl ClawController {
 impl ClawLift {
     pub const START_HEIGHT: f32 = 3.65;
     pub const SPEED: f32 = 1.0;
+}
+
+impl ClawString {
+    pub const RADIUS: f32 = 0.007;
+    pub const DEPTH: f32 = 0.1;
+    pub const START_HEIGHT: f32 = 0.03;
 }
 
 const DROP_SFX: [AudioCollection; 6] = [
@@ -250,4 +259,32 @@ fn claw_stopper_event_manager_system(
     mut events: ResMut<Events<CollisionEvent>>,
 ) {
     events.update();
+}
+
+fn claw_string_system(
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut query_mesh: Query<(&Handle<Mesh>, &mut Transform), With<ClawString>>,
+    query_transform: Query<(&Transform, &ClawLift), Without<ClawString>>
+) {
+    if let (Ok((handle_mesh, mut claw_string_transform)), Ok((claw_lift_transform, claw_lift))) = (
+        query_mesh.get_single_mut(),
+        query_transform.get_single()
+    ) {
+        match claw_lift.0 {
+            ClawLiftState::Up | ClawLiftState::Down => {
+                if let Some(mesh) = meshes.get_mut(handle_mesh) {
+                    let height_delta = ClawLift::START_HEIGHT - claw_lift_transform.translation.y;
+
+                    *mesh = Capsule {
+                        radius: ClawString::RADIUS,
+                        depth: ClawString::DEPTH + height_delta,
+                        ..default()
+                    }.into();
+
+                    claw_string_transform.translation.y = ClawString::START_HEIGHT - height_delta / 2.0;
+                }
+            },
+            _ => {}
+        }
+    }
 }

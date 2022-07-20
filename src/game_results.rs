@@ -60,7 +60,7 @@ fn setup_system(
         match results {
             GameResults::SpeedGame(progress) => {
                 is_win = progress.toy_caught;
-                win_text = format!("Caught: {:.2} sec!", &progress.timer.elapsed_secs());
+                win_text = format!("{:.2} sec!", &progress.timer.elapsed_secs());
             }
             GameResults::NumberGame(progress) => {
                 is_win = progress.toys_caught > 0;
