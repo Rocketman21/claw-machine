@@ -4,7 +4,6 @@ use iyes_loopless::prelude::*;
 use strum_macros::Display;
 
 use crate::{
-    ui::CursorControl,
     GameState,
     helpers::despawn_with,
     assets::audio::{BackgroundAudioChannel, AudioHandleStorage, AudioCollection},

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_kira_audio::AudioChannel;
 use iyes_loopless::prelude::*;
 
 use crate:: {
@@ -7,7 +6,7 @@ use crate:: {
     GameState,
     claw::{ReleaseClawEvent, ToyCatchEvent, ClawReturnedToBaseEvent},
     game_results::GameResults,
-    ui::controls::in_game_text::InGameText, assets::audio::{BackgroundAudioChannel, stop_background_audio_system},
+    ui::controls::in_game_text::InGameText, assets::audio::stop_background_audio_system,
 };
 
 #[derive(Default)]

@@ -51,7 +51,7 @@ pub struct NumberGameProgress {
 }
 
 impl NumberGameProgress {
-    const TIME_TO_CATCH: f32 = 7.0;
+    const TIME_TO_CATCH: f32 = 40.0;
 }
 
 impl Default for NumberGameProgress {

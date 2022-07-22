@@ -26,7 +26,6 @@ impl Plugin for GameResultsPlugin {
             )
             .add_exit_system(GameState::GameResults, despawn_with::<GameResults>)
             .add_exit_system(GameState::GameResults, despawn_with::<CMUIMenu>);
-            // .add_exit_system(GameState::InGame, exit_system);
     }
 }
 

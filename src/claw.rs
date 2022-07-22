@@ -1,10 +1,10 @@
-use bevy::{prelude::{*, shape::Capsule}, ecs::{event::Events, query}};
+use bevy::{prelude::{*, shape::Capsule}, ecs::{event::Events}};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::{
-    assets::audio::{AudioHandleStorage, AudioCollection, DropAudioChannel, BackgroundAudioChannel},
+    assets::audio::{AudioHandleStorage, AudioCollection, DropAudioChannel},
     glue::Glue,
     movement::WASDMovement,
     constants::{COL_GROUP_EJECTED_TOY, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_GLASS},

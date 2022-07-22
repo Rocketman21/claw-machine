@@ -7,8 +7,25 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     movement::WASDMovement,
-    claw::{ClawController, ClawObject, ClawLift, ClawSensor, ClawStopper, ClawLiftState, ClawControllerState, ClawString},
-    constants::{COL_GROUP_CLAW, COL_GROUP_ALL, COL_GROUP_CLAW_STOPPER, COL_GROUP_TOY_EJECTION_SHELV, COL_GROUP_EJECTED_TOY, COL_GROUP_GLASS, COL_GROUP_BOTTOM_GLASS},
+    claw::{
+        ClawController,
+        ClawObject,
+        ClawLift,
+        ClawSensor,
+        ClawStopper,
+        ClawLiftState,
+        ClawControllerState,
+        ClawString
+    },
+    constants::{
+        COL_GROUP_CLAW,
+        COL_GROUP_ALL,
+        COL_GROUP_CLAW_STOPPER,
+        COL_GROUP_TOY_EJECTION_SHELV,
+        COL_GROUP_EJECTED_TOY,
+        COL_GROUP_GLASS,
+        COL_GROUP_BOTTOM_GLASS
+    },
     assets::{
         gltf::{GltfCollection, GltfHandleStorage},
         audio::{AudioCollection, GlassAudioChannel, AudioHandleStorage}
