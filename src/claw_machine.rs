@@ -120,7 +120,7 @@ fn spawn_claw_machine_system(
                 parent.spawn()
                     .insert(ClawString)
                     .insert_bundle(PbrBundle {
-                        transform: Transform::from_xyz(0.0, ClawString::START_HEIGHT, 0.0),
+                        transform: Transform::from_xyz(0.001, ClawString::START_HEIGHT, -0.004),
                         mesh: meshes.add(
                              Capsule {
                                 radius: ClawString::RADIUS,

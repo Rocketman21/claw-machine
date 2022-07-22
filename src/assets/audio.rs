@@ -63,6 +63,8 @@ pub enum AudioCollection {
     Defeat2,
     Defeat3,
 
+    Heartbeat,
+
     Button
 }
 

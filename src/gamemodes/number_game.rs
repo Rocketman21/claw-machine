@@ -5,8 +5,20 @@ use iyes_loopless::prelude::*;
 use crate::{
     GameState,
     ui::controls::in_game_text::InGameText,
-    claw::{ClawReturnedToBaseEvent, ClawController, ClawControllerState, ToyCatchEvent, ReleaseClawEvent},
-    game_results::GameResults, assets::audio::{BackgroundAudioChannel, stop_background_audio_system},
+    claw::{
+        ClawReturnedToBaseEvent,
+        ClawController,
+        ClawControllerState,
+        ToyCatchEvent,
+        ReleaseClawEvent
+    },
+    game_results::GameResults,
+    assets::audio::{
+        BackgroundAudioChannel,
+        stop_background_audio_system,
+        AudioHandleStorage,
+        AudioCollection
+    },
 };
 
 use super::gameplay::Gamemode;
@@ -34,17 +46,19 @@ impl Plugin for NumberGamePlugin {
 #[derive(Component, Clone)]
 pub struct NumberGameProgress {
     timer: Timer,
+    heartbeat_played: bool,
     pub toys_caught: u8
 }
 
 impl NumberGameProgress {
-    const TIME_TO_CATCH: f32 = 40.0;
+    const TIME_TO_CATCH: f32 = 7.0;
 }
 
 impl Default for NumberGameProgress {
     fn default() -> Self {
         Self {
             timer: Timer::from_seconds(NumberGameProgress::TIME_TO_CATCH, false),
+            heartbeat_played: false,
             toys_caught: 0
         }
     }
@@ -58,6 +72,8 @@ fn setup_system(mut commands: Commands) {
 
 fn update_system(
     time: Res<Time>,
+    audio_background: Res<AudioChannel<BackgroundAudioChannel>>,
+    audio_storage: Res<AudioHandleStorage>,
     mut progress_query: Query<&mut NumberGameProgress>,
     mut text_query: Query<&mut Text, With<InGameText>>,
     mut events: EventWriter<ReleaseClawEvent>,
@@ -67,9 +83,19 @@ fn update_system(
             events.send(ReleaseClawEvent);
         }
 
-        for mut text in text_query.iter_mut() {
-            let remain = NumberGameProgress::TIME_TO_CATCH - progress.timer.elapsed_secs();
+        let remain = (
+            NumberGameProgress::TIME_TO_CATCH - progress.timer.elapsed_secs()
+        ).floor();
 
+        if let Some(heartbeat) = audio_storage.0.get(&AudioCollection::Heartbeat) {
+            if remain <= 5.0 && !progress.heartbeat_played {
+                audio_background.set_volume(1.5);
+                audio_background.play(heartbeat.clone());
+                progress.heartbeat_played = true
+            }
+        }
+
+        for mut text in text_query.iter_mut() {
             text.sections[0].value = if remain > 0.0 {
                 format!("{:.0}", remain)
             } else {
