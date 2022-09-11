@@ -1,4 +1,4 @@
-use bevy::{prelude::{*, shape::Capsule}, ecs::{event::Events}};
+use bevy::{prelude::{*, shape::Capsule}, ecs::event::Events};
 use bevy_kira_audio::AudioChannel;
 use bevy_rapier3d::prelude::*;
 use iyes_loopless::prelude::*;
@@ -96,11 +96,11 @@ const DROP_SFX: [AudioCollection; 6] = [
 ];
 
 fn claw_lift_sync_system(
-    claw_object_query: Query<&Transform, With<ClawController>>,
+    claw_controller_query: Query<&Transform, With<ClawController>>,
     mut claw_lift_query: Query<&mut Transform, (With<ClawLift>, Without<ClawController>)>,
 ) {
     if let (Ok(claw_object_position), Ok(mut claw_lift_position)) = (
-        claw_object_query.get_single(),claw_lift_query.get_single_mut()
+        claw_controller_query.get_single(),claw_lift_query.get_single_mut()
     ) {
         let mut next_position = claw_object_position.translation;
         next_position.y = claw_lift_position.translation.y;
@@ -224,7 +224,7 @@ fn claw_return_system(
             let start_diff = base - start_pos;
             let step = start_diff / ClawController::STEP * time.delta_seconds();
 
-            if current_diff.abs().max_element() > step.abs().max_element() {
+            if current_diff.abs().max_element() > step.abs().max_element() * 2.0 {
                 transform.translation += step;
             } else {
                 if let Ok((entity, glue)) = glue_query.get_single() {
@@ -235,6 +235,7 @@ fn claw_return_system(
                     ));
                 }
 
+                transform.translation = ClawController::BASE_POS.into();
                 claw_controller.0 = ClawControllerState::Locked;
                 events.send(ClawReturnedToBaseEvent);
             }

@@ -131,7 +131,6 @@ fn spawn_claw_machine_system(
             .insert(ColliderMassProperties::Density(140.0))
             .insert(RigidBody::Dynamic)
             .insert(LockedAxes::TRANSLATION_LOCKED_Y | LockedAxes::ROTATION_LOCKED)
-            .insert(ExternalImpulse::default())
             .insert(WASDMovement)
             .with_children(|parent| {
                 parent.spawn()
@@ -153,7 +152,7 @@ fn spawn_claw_machine_system(
         let claw_lift = commands.spawn()
             .insert(ClawLift(ClawLiftState::Off))
             .insert_bundle((Transform::from_xyz(0.0, ClawLift::START_HEIGHT, 0.0), GlobalTransform::identity()))
-            
+
             // not using KinematicPositionBased as it causes a bug with ClawObject remain asleep when lift moves
             .insert(RigidBody::Dynamic)
             .id();
@@ -216,11 +215,11 @@ fn glass_hit_system(
 
                 for glass in glass_query.iter() {
                     if entities.into_iter().any(|entity| entity == &glass) {
-                        let hit_force = claw_velocity.linvel.abs().max_element();
+                        let hit_force = claw_velocity.linvel.abs().max_element().clamp(0.0, 1.5);
 
                         if time.seconds_since_startup() - last_hit_time.0 > 0.5 {
                             if let Some(glass_sound) = audio_storage.get_random(&GLASS_SFX) {
-                                audio.set_volume(0.07 / f32::ln(hit_force));
+                                audio.set_volume(hit_force);
                                 audio.play(glass_sound.clone());
 
                                 last_hit_time.0 = time.seconds_since_startup();
